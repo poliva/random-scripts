@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Joshua V. Dillon
+# jvdillon (a) gmail (.) com
+#
+# Restart unity even from a TTY (control-alt-F1).
+
+export DISPLAY=:0.0;
+export DBUS_SESSION_BUS_ADDRESS=$(grep -z DBUS_SESSION_BUS_ADDRESS /proc/$(pgrep -nu $USER gnome-screensav)/environ|cut -d= -f2-)
+unity --replace &
+

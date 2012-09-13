@@ -1,0 +1,14 @@
+#!/bin/bash
+# Restart unity2D even from a TTY (control-alt-F1).
+
+export DISPLAY=:0.0;
+export DBUS_SESSION_BUS_ADDRESS=$(grep -z DBUS_SESSION_BUS_ADDRESS /proc/$(pgrep -nu $USER gnome-screensav)/environ|cut -d= -f2-)
+
+#unity_2d="unity-2d-places unity-2d-launcher unity-2d-panel unity-2d-spread"
+unity_2d="unity-2d-launcher unity-2d-panel"
+
+killall $unity_2d
+metacity --replace &
+for f in $unity_2d; do
+	"$f" &
+done

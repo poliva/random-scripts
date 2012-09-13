@@ -1,0 +1,21 @@
+#!/bin/bash
+
+FILE=$1
+
+if [ ! -e "${FILE}" ]; then
+	echo "USAGE: $0 <file.apk>"
+	exit 1
+fi
+
+if [ ! -d "/tmp/signapk" ]; then
+
+	mkdir -p /tmp/signapk
+	openssl genrsa -out /tmp/signapk/key.pem 1024
+	openssl req -new -key /tmp/signapk/key.pem -out /tmp/signapk/request.pem
+	openssl x509 -req -days 9999 -in /tmp/signapk/request.pem -signkey /tmp/signapk/key.pem -out /tmp/signapk/certificate.pem
+	openssl pkcs8 -topk8 -outform DER -in /tmp/signapk/key.pem -inform PEM -out /tmp/signapk/key.pk8 -nocrypt
+
+fi
+
+FNAME=`echo ${FILE} |sed -e "s/.apk$//g"`
+java -jar /home/pau/bin/signapk.jar /tmp/signapk/certificate.pem /tmp/signapk/key.pk8 ${FNAME}.apk ${FNAME}-signed.apk
