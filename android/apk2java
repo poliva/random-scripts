@@ -9,10 +9,11 @@ FILE=`echo "$1" |sed -e "s/.apk$//gI" -e"s/.dex$//gI"`
 CURPATH=`pwd`
 TMPDIR="/tmp/apk2java.$$"
 
-mkdir -p "${TMPDIR}"
-cd "${TMPDIR}"
+dex2jar "${1}"
 
-/home/pau/bin/dex2jar-src/d2j-dex2jar.sh -s -f -o "${TMPDIR}/${FILE}.jar" "${CURPATH}/${1}"
+mkdir -p "${TMPDIR}"
+mv "${FILE}.jar" "${TMPDIR}/"
+cd "${TMPDIR}"
 unzip "${TMPDIR}/${FILE}.jar"
 rm "${TMPDIR}/${FILE}.jar"
 for d in `find . -iname "*.class" |xargs -n 1 dirname |uniq` ; do 
@@ -25,7 +26,7 @@ for d in `find . -iname "*.class" |xargs -n 1 dirname |uniq` ; do
 	done
 	cd ${TMPDIR}
 done
-mkdir -p "${CURPATH}/java/"
-mv * "${CURPATH}/java/"
+mkdir -p "${CURPATH}/${FILE}/java/"
+mv * "${CURPATH}/${FILE}/java/"
 cd "${CURPATH}"
 rm -r "${TMPDIR}"
