@@ -1,0 +1,31 @@
+#!/bin/bash
+
+if [ ! -e "$1" ]; then
+	echo "USAGE: $0 file.<apk|dex>"
+	exit 1
+fi
+
+FILE=`echo "$1" |sed -e "s/.apk$//gI" -e"s/.dex$//gI"`
+CURPATH=`pwd`
+TMPDIR="/tmp/apk2java.$$"
+
+mkdir -p "${TMPDIR}"
+cd "${TMPDIR}"
+
+/home/pau/bin/dex2jar-src/d2j-dex2jar.sh -s -f -o "${TMPDIR}/${FILE}.jar" "${CURPATH}/${1}"
+unzip "${TMPDIR}/${FILE}.jar"
+rm "${TMPDIR}/${FILE}.jar"
+for d in `find . -iname "*.class" |xargs -n 1 dirname |uniq` ; do 
+	cd ${d}
+	jad *.class
+	rm *.class
+	for j in `ls *.jad` ; do
+		t=`echo $j |sed -e "s/.jad$/.java/g"`
+		mv ${j} ${t}
+	done
+	cd ${TMPDIR}
+done
+mkdir -p "${CURPATH}/java/"
+mv * "${CURPATH}/java/"
+cd "${CURPATH}"
+rm -r "${TMPDIR}"

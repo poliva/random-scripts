@@ -1,0 +1,13 @@
+#!/bin/bash
+if [ -z $1 ]; then
+	echo "USAGE: $0 <classes.dex>"
+	exit 1
+fi
+
+mkdir -p ./ddx
+if [ $? != 0 ]; then
+	echo "Could not create ./ddx"
+	exit 1
+fi
+
+java -jar /home/pau/bin/ddx1.22.jar -d ./ddx/ $1

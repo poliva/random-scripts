@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ ! -e "$1" ]; then
+	echo "USAGE: $0 file.<apk|dex>"
+	exit 1
+fi
+
+FILE=`echo "$1" |sed -e "s/.apk$//gI" -e"s/.dex$//gI"`
+echo "FILE: $FILE"
+
+/home/pau/bin/dex2jar-src/d2j-dex2jar.sh -s -f -o ./${FILE}.jar "$1"
