@@ -1,0 +1,31 @@
+#!/bin/bash
+
+if [ ! -e "$1" ]; then
+	echo "USAGE: $0 file.<dex|apk>"
+	exit 1
+fi
+
+CURPATH=`pwd`
+FILEPATH=`dirname $1`
+FILENAME=`basename $1`
+if [ "${FILEPATH}" == "." ]; then
+	FILEPATH="${CURPATH}"
+fi
+FILE="${FILEPATH}/${FILENAME}"
+
+TMPDIR="/tmp/ded.$$"
+mkdir -p "${TMPDIR}"
+cd "${TMPDIR}"
+
+echo "${FILE}" |cut -c 3- |grep -i apk 2>&1 >/dev/null
+if [ $? == 0 ]; then
+	unzip "${FILE}" classes.dex
+else
+	cp "${FILE}" ./classes.dex
+fi
+
+/opt/ded/ded.sh "${TMPDIR}/classes.dex" -c
+
+mv /opt/ded/retargeted/ /opt/ded/optimized-decompiled/ /opt/ded/optimized/ "${CURPATH}"
+cd "${CURPATH}"
+rm -rf "${TMPDIR}"
