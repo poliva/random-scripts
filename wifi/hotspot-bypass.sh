@@ -13,7 +13,8 @@ gw=`ip route |grep "^default via" |awk '{print $3}'`
 mac=`ip addr show dev $IFACE |grep link/ether |awk '{print $2}'`
 ipmask=`ip addr show dev $IFACE |grep "inet " |awk '{print $2}'`
 mask=`echo $ipmask |cut -f 2 -d "/"`
-network=`ipcalc -nb $ipmask |grep "^Network" |awk '{print $2}'`
+netaddr=`sipcalc $ipmask |grep "^Network address" |awk '{print $4}'`
+network="$netaddr/$mask"
 
 # get gw mac
 ping -n -c1 -w1 $gw >/dev/null
