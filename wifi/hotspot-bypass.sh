@@ -37,7 +37,11 @@ fi
 
 for net in `cat /tmp/sipcalc.$$` ; do
 
-	network="$net/$mask"
+	if [ $mask -lt 24 ]; then
+		network="$net/24"
+	else
+		network="$net/$mask"
+	fi
 	nmap -n -PR -sP -oX /tmp/hotspot.$$.xml $network >/dev/null
 
 	# process nmap results in reverse order
