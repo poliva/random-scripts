@@ -69,6 +69,7 @@ else
 		$CURL -L -b $COOKIE -d "j_username=$USERNAME&j_password=$PASSWORD&x=108&y=21" https://www.simyo.es/simyo/publicarea/j_security_check -o /dev/null
 		echo -n "."
 		if [ "$DEBUG" -eq 1 ]; then
+			mkdir samples 2>/dev/null
 			$CURL -L -b $COOKIE https://www.simyo.es/simyo/privatearea/customer/consumption-panel.htm -o samples/panel.html
 		else
 			RES2=$($CURL -L -b $COOKIE https://www.simyo.es/simyo/privatearea/customer/consumption-panel.htm -o - |tidy -w 200 2>/dev/null)
@@ -107,7 +108,7 @@ if [ "$BC" != 1 ] || [ -z "$RES2" ]; then
 	exit 0
 fi
 
-PANEL=$(echo "$RES2" |egrep -B1 -A1 '(Llamadas|SMS|MMS|Datos|Roaming)' |grep "^<td")
+PANEL=$(echo "$RES2" |egrep -B3 -A3 '(Llamadas|SMS|MMS|Datos|Roaming)' |egrep "(^<td|td>$)")
 DATA=`echo $PANEL |sed -e "s:</td> <td>:<br>:g" |lynx -dump --stdin |sed -e "s/   //g" -e "s/^ //g" -e "s: / :/:g" -e "s/€/EUR/g"`
 if [ "$TEST" -eq 1 ]; then
 	echo "===================="
@@ -152,5 +153,5 @@ done
 if [ "$print" -eq 1 ]; then echo ; fi
 
 echo "$RES2" |grep "Consumo total" |lynx -dump --stdin |sed -e "s/€/EUR/g" |grep -v "^$"
-DIA=$(echo "$RES2" |grep "Recuerda que.*de cada mes" |rev |cut -f 4 -d " " |rev) 
+DIA=$(echo "$RES2" |grep "desde el d.*hasta hoy" |rev |cut -f 3 -d " " |rev)
 echo "Periodo facturacion empieza el dia $DIA de cada mes"
