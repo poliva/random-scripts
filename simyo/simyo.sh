@@ -64,9 +64,9 @@ else
 	while [ -z "$RES" ]; do
 		count=$(($count + 1))
 		echo -n "."
-		$CURL -c $COOKIE https://www.simyo.es/simyo/publicarea/j_security_check -o /dev/null
+		$CURL -c $COOKIE https://www.simyo.es/simyo/publicarea/login/j_security_check -o /dev/null
 		echo -n "."
-		$CURL -L -b $COOKIE -d "j_username=$USERNAME&j_password=$PASSWORD&x=108&y=21" https://www.simyo.es/simyo/publicarea/j_security_check -o /dev/null
+		$CURL -L -b $COOKIE -d "j_username=$USERNAME&j_password=$PASSWORD&x=108&y=21" https://www.simyo.es/simyo/publicarea/login/j_security_check -o /dev/null
 		echo -n "."
 		if [ "$DEBUG" -eq 1 ]; then
 			mkdir samples 2>/dev/null
