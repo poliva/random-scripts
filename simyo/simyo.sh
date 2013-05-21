@@ -146,7 +146,7 @@ for f in Llamadas SMS ; do
         if [ ! -z "$A" ] || [ ! -z "$B" ]; then
                 if [ -z "$A" ]; then A="$f" ; fi
                 if [ -z "$B" ]; then B="0 EUR" ; fi
-                echo "$A Premium ($B)"
+		echo "$A ($B)" |sed -e "s/Llamadas/Llamadas Premium/g" -e "s/SMS /SMS Premium/g"
 		print=1
         fi
 done
