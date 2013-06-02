@@ -56,7 +56,7 @@ if [ "$BC" -gt 6 ]; then
 fi
 
 if [ "$TEST" -eq 1 ]; then
-	RES=$(cat samples/detail.html |tidy -w 200 2>/dev/null |egrep '(VOICE|SMS|MMS|DATA|consumidos).*span' |lynx -dump --stdin)
+	RES=$(cat samples/detail.html |tidy -w 200 2>/dev/null |egrep -A2 '(VOICE|SMS|MMS|DATA|consumidos).*span' |lynx -dump --stdin |sed -e "s/--//g")
 	RES2=$(cat samples/panel.html |tidy -w 200 2>/dev/null)
 else
 	count=0
@@ -78,7 +78,7 @@ else
 		if [ "$DEBUG" -eq 1 ]; then
 			$CURL -L -b $COOKIE -d "selectedBillCycle=${BC}" https://www.simyo.es/simyo/privatearea/customer/consumption-detail.htm -o samples/detail.html
 		else
-			RES=$($CURL -L -b $COOKIE -d "selectedBillCycle=${BC}" https://www.simyo.es/simyo/privatearea/customer/consumption-detail.htm -o - |tidy -w 200 2>/dev/null |egrep '(VOICE|SMS|MMS|DATA|consumidos).*span' |lynx -dump --stdin)
+			RES=$($CURL -L -b $COOKIE -d "selectedBillCycle=${BC}" https://www.simyo.es/simyo/privatearea/customer/consumption-detail.htm -o - |tidy -w 200 2>/dev/null |egrep -A2 '(VOICE|SMS|MMS|DATA|consumidos).*span' |lynx -dump --stdin |sed -e "s/--//g")
 		fi
 		echo -n "."
 		rm -f $COOKIE 
