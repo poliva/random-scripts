@@ -16,17 +16,18 @@ mv "${FILE}.jar" "${TMPDIR}/"
 cd "${TMPDIR}"
 unzip "${TMPDIR}/${FILE}.jar"
 rm "${TMPDIR}/${FILE}.jar"
-for d in `find . -iname "*.class" |xargs -n 1 dirname |uniq` ; do 
-	cd ${d}
-	jad *.class
-	rm *.class
-	for j in `ls *.jad` ; do
-		t=`echo $j |sed -e "s/.jad$/.java/g"`
-		mv ${j} ${t}
-	done
-	cd ${TMPDIR}
-done
+#for d in `find . -iname "*.class" |xargs -n 1 dirname |uniq` ; do 
+#	cd ${d}
+#	jad *.class
+#	rm *.class
+#	for j in `ls *.jad` ; do
+#		t=`echo $j |sed -e "s/.jad$/.java/g"`
+#		mv ${j} ${t}
+#	done
+#	cd ${TMPDIR}
+#done
+jad -o -r -sjava -dsrc './**/*.class'
 mkdir -p "${CURPATH}/${FILE}/java/"
-mv * "${CURPATH}/${FILE}/java/"
+mv src/* "${CURPATH}/${FILE}/java/"
 cd "${CURPATH}"
 rm -r "${TMPDIR}"
