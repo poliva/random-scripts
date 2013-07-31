@@ -6,7 +6,7 @@
 # - Needs radare2 & busybox installed
 # (c) 2013 Pau Oliva (@pof)
 
-mymac=`ip addr show wlan0 |grep link/ether |grep link/ether |awk '{print $2}' |sed -e "s/://g"`
+mymac=`ip addr show wlan0 |grep link/ether |awk '{print $2}' |sed -e "s/://g"`
 newmac=`echo $1 |sed -e "s/://g"`
 
 len=`echo -n ${mymac} |wc -c`
