@@ -24,6 +24,7 @@ if [ "$2" == "recovery" ]; then
 /system/xbin/su --daemon &
 # Chainfire SuperSU
 /system/xbin/daemonsu --auto-daemon &
+/system/etc/install-recovery-2.sh
 		EOF
 
 		mount -o remount,ro /system
