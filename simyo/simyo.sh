@@ -48,10 +48,10 @@ if [ -z "$billCycle" ]; then
 fi
 if [ "$billCycle" -gt 6 ]; then
 	echo "Billing Cylce must be an integer from 1 (current month) to 6"
-#	exit 1
+	exit 1
 fi
 
-SIMYOPASS=$(php tripledes.php $PASSWORD)
+SIMYOPASS=$(php tripledes.php $PASSWORD 2>/dev/null)
 kPublicKey="a654fb77dc654a17f65f979ba8794c34"
 
 function getApiSig() {
@@ -63,7 +63,8 @@ function getApiSig() {
 function getJsonValue() {
 	key="$1"
 	file="$2"
-	cat $file |json_pp |grep "\"$key\"" |awk '{print $3}' |head -n 1 |cut -f 2 -d '"' |sed -e "s/,$//g"
+	local J=$(cat $file)
+	python -c "import json;print json.loads('$J')${key}"
 }
 
 #### login
@@ -74,8 +75,8 @@ function api_login() {
 	curl -s -d "user=${USERNAME}&password=${SIMYOPASS}&apiSig=null" "${URL}" -o auth.json
 	if [ $VERBOSE -eq 1 ]; then json_pp < auth.json ; fi
 
-	sessionId=$(getJsonValue sessionId auth.json)
-	customerId=$(getJsonValue customerId auth.json)
+	sessionId=$(getJsonValue "['response']['sessionId']" auth.json)
+	customerId=$(getJsonValue "['response']['customerId']" auth.json)
 
 	if [ -z "$customerId" ]; then
 		echo "Something went wrong."
@@ -91,12 +92,12 @@ function subscriptions() {
 	curl -s "$URL" -o subscriptions.json
 	if [ $VERBOSE -eq 1 ]; then json_pp < subscriptions.json ; fi
 
-	registerDate=$(getJsonValue registerDate subscriptions.json)
-	mainProductId=$(getJsonValue mainProductId subscriptions.json)
-	billCycleType=$(getJsonValue billCycleType subscriptions.json)
-	msisdn=$(getJsonValue msisdn subscriptions.json)
-	subscriberId=$(getJsonValue subscriberId subscriptions.json)
-	payType=$(getJsonValue payType subscriptions.json)
+	registerDate=$(getJsonValue "['response']['subcriptions'][0]['registerDate']" subscriptions.json)
+	mainProductId=$(getJsonValue "['response']['subcriptions'][0]['mainProductId']" subscriptions.json)
+	billCycleType=$(getJsonValue "['response']['subcriptions'][0]['billCycleType']" subscriptions.json)
+	msisdn=$(getJsonValue "['response']['subcriptions'][0]['msisdn']" subscriptions.json)
+	subscriberId=$(getJsonValue "['response']['subcriptions'][0]['subscriberId']" subscriptions.json)
+	payType=$(getJsonValue "['response']['subcriptions'][0]['payType']" subscriptions.json)
 }
 
 #### consumptionByCycle
