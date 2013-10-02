@@ -132,10 +132,10 @@ function consumptionByCycle() {
 	curl -s "$URL" -o consumptionByCicle.json
 	if [ $VERBOSE -eq 1 ]; then json_pp < consumptionByCicle.json ; fi
 
-	J=$(cat consumptionByCicle.json)
-
-	startDate=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['startDate']" |cut -c 1-10)
-	endDate=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['endDate']" |cut -c 1-10)
+	startDate=$(getJsonValue "['response']['consumptionsByCycle'][0]['startDate']" consumptionByCicle.json)
+	startDate=$(echo $startDate |cut -c 1-10)
+	endDate=$(getJsonValue "['response']['consumptionsByCycle'][0]['endDate']" consumptionByCicle.json)
+	endDate=$(echo $endDate |cut -c 1-10)
 
 	start=$(date -d@${startDate} "+%d/%m/%y")
 	end=$(date -d@${endDate} "+%d/%m/%y")
@@ -143,78 +143,78 @@ function consumptionByCycle() {
 	echo "Periodo de $start a $end"
 	echo
 
-	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voice']['count']")
-	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voice']['chargeTotal']")
+	count=$(getJsonValue "['response']['consumptionsByCycle'][0]['voice']['count']" consumptionByCicle.json)
+	chargeTotal=$(getJsonValue "['response']['consumptionsByCycle'][0]['voice']['chargeTotal']" consumptionByCicle.json)
 	hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
 	echo "Llamadas: ${hms} (${chargeTotal} EUR)"
 
-	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['sms']['count']")
-	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['sms']['chargeTotal']")
+	count=$(getJsonValue "['response']['consumptionsByCycle'][0]['sms']['count']" consumptionByCicle.json)
+	chargeTotal=$(getJsonValue "['response']['consumptionsByCycle'][0]['sms']['chargeTotal']" consumptionByCicle.json)
 	echo "SMS: ${count} (${chargeTotal} EUR)"
 
-	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['mms']['count']")
+	count=$(getJsonValue "['response']['consumptionsByCycle'][0]['mms']['count']" consumptionByCicle.json)
 	if [ $count -gt 0 ]; then
-		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['mms']['chargeTotal']")
+		chargeTotal=$(getJsonValue "['response']['consumptionsByCycle'][0]['mms']['chargeTotal']" consumptionByCicle.json)
 		echo "MMS: ${count} (${chargeTotal} EUR)"
 	fi
 
-	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['data']['count']")
-	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['data']['chargeTotal']")
+	count=$(getJsonValue "['response']['consumptionsByCycle'][0]['data']['count']" consumptionByCicle.json)
+	chargeTotal=$(getJsonValue "['response']['consumptionsByCycle'][0]['data']['chargeTotal']" consumptionByCicle.json)
 	count=$(echo "scale=2; $count/1024/1024" |bc) # bytes to megabytes
 	echo "Datos: ${count} MB (${chargeTotal} EUR)"
 
 	PRINT=0
 
-	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voicePremium']['count']")
+	count=$(getJsonValue "['response']['consumptionsByCycle'][0]['voicePremium']['count']" consumptionByCicle.json)
 	if [ $count -gt 0 ]; then
-		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voicePremium']['chargeTotal']")
+		chargeTotal=$(getJsonValue "['response']['consumptionsByCycle'][0]['voicePremium']['chargeTotal']" consumptionByCicle.json)
 		hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
 		if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
 		echo "Llamadas Premium: ${hms} (${chargeTotal} EUR)"
 	fi
 
-	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['smsPremium']['count']")
+	count=$(getJsonValue "['response']['consumptionsByCycle'][0]['smsPremium']['count']" consumptionByCicle.json)
 	if [ $count -gt 0 ]; then
-		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['smsPremium']['chargeTotal']")
+		chargeTotal=$(getJsonValue "['response']['consumptionsByCycle'][0]['smsPremium']['chargeTotal']" consumptionByCicle.json)
 		if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
 		echo "SMS Premium: ${count} (${chargeTotal} EUR)"
 	fi
 
 	PRINT=0
 
-	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceOutgoingRoaming']['count']")
+	count=$(getJsonValue "['response']['consumptionsByCycle'][0]['voiceOutgoingRoaming']['count']" consumptionByCicle.json)
 	if [ $count -gt 0 ]; then
-		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceOutgoingRoaming']['chargeTotal']")
+		chargeTotal=$(getJsonValue "['response']['consumptionsByCycle'][0]['voiceOutgoingRoaming']['chargeTotal']" consumptionByCicle.json)
 		hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
 		if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
 		echo "Llamadas Salientes Roaming: ${hms} (${chargeTotal} EUR)"
 	fi
 
-	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceIngoingRoaming']['count']")
+	count=$(getJsonValue "['response']['consumptionsByCycle'][0]['voiceIngoingRoaming']['count']" consumptionByCicle.json)
 	if [ $count -gt 0 ]; then
-		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceIngoingRoaming']['chargeTotal']")
+		chargeTotal=$(getJsonValue "['response']['consumptionsByCycle'][0]['voiceIngoingRoaming']['chargeTotal']" consumptionByCicle.json)
 		hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
 		if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
 		echo "Llamadas Entrantes Roaming: ${hms} (${chargeTotal} EUR)"
 	fi
 
-	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['smsRoaming']['count']")
+	count=$(getJsonValue "['response']['consumptionsByCycle'][0]['smsRoaming']['count']" consumptionByCicle.json)
 	if [ $count -gt 0 ]; then
-		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['smsRoaming']['chargeTotal']")
+		chargeTotal=$(getJsonValue "['response']['consumptionsByCycle'][0]['smsRoaming']['chargeTotal']" consumptionByCicle.json)
 		if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
 		echo "SMS Roaming: ${count} (${chargeTotal} EUR)"
 	fi
 
-	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['mmsRoaming']['count']")
+	count=$(getJsonValue "['response']['consumptionsByCycle'][0]['mmsRoaming']['count']" consumptionByCicle.json)
 	if [ $count -gt 0 ]; then
-		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['mmsRoaming']['chargeTotal']")
+		chargeTotal=$(getJsonValue "['response']['consumptionsByCycle'][0]['mmsRoaming']['chargeTotal']" consumptionByCicle.json)
 		if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
 		echo "MMS Roaming: ${count} (${chargeTotal} EUR)"
 	fi
 
-	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['dataRoaming']['count']")
+	count=$(getJsonValue "['response']['consumptionsByCycle'][0]['dataRoaming']['count']" consumptionByCicle.json)
 	if [ $count -gt 0 ]; then
-		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['dataRoaming']['chargeTotal']")
+		chargeTotal=$(getJsonValue "['response']['consumptionsByCycle'][0]['dataRoaming']['chargeTotal']" consumptionByCicle.json)
 		count=$(echo "scale=2; $count/1024/1024" |bc) # bytes to megabytes
 		if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
 		echo "Datos Roaming: ${count} MB (${chargeTotal} EUR)"
@@ -222,7 +222,7 @@ function consumptionByCycle() {
 
 	echo
 
-	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['chargeTotal']")
+	chargeTotal=$(getJsonValue "['response']['consumptionsByCycle'][0]['chargeTotal']" consumptionByCicle.json)
 	echo "Consumo total: ${chargeTotal} EUR"
 	echo
 }
