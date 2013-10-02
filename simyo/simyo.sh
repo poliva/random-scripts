@@ -17,20 +17,30 @@ if [ -z "$USERNAME" ]; then
 	exit 1
 fi
 
+INVOICELIST=0
+INVOICEDOWNLOAD=0
 VERBOSE=0
 VAL=""
 for opt in $* ; do
 	case $opt in
 		"-v") VERBOSE=1  ;;
+		"-l") INVOICELIST=1  ;;
 		"-b")
 			VAL="billCycle"
 			continue
 		;;
+		"-d")
+			VAL="reqInvoiceId"
+			INVOICEDOWNLOAD=1
+			continue
+		;;
 		"-h")
-			echo "Usage: $0 [-h|-v|-b num]"
+			echo "Usage: $0 [-h|-v|-b num|-l|-d id]"
 			echo "    -h     : show this help"
 			echo "    -v     : verbose mode"
 			echo "    -b num : bill cycle (from 1 to 6)"
+			echo "    -l     : invoice list"
+			echo "    -d id  : download invoice"
 			exit 0
 		;;
 	esac
@@ -39,9 +49,18 @@ for opt in $* ; do
 			billCycle=$opt
 			VAL=""
 		;;
-		*) VAL=""
+		"reqInvoiceId")
+			reqInvoiceId=$opt
+			VAL=""
+		;;
+		*) VAL="" ;;
 	esac
 done
+
+if [ $INVOICEDOWNLOAD -eq 1 ] && [ -z "$reqInvoiceId" ]; then
+	echo "WARNING: Parameter -d requires an invoice id. Listing invoices instead."
+	INVOICELIST=1
+fi
 
 if [ -z "$billCycle" ]; then
 	billCycle=1
@@ -64,7 +83,12 @@ function getJsonValue() {
 	key="$1"
 	file="$2"
 	local J=$(cat $file)
-	python -c "import json;print json.loads('$J')${key}"
+	python -c "import json;print json.loads('$J')${key}" 2>/dev/null
+	if [ $? != 0 ]; then
+		key=$(echo $key |rev |cut -f 2 -d "'" |rev)
+		cat $file |json_pp |grep "\"$key\"" |awk '{print $3}' |head -n 1 |cut -f 2 -d '"' |sed -e "s/,$//g"
+		return 1
+	fi
 }
 
 #### login
@@ -107,6 +131,100 @@ function consumptionByCycle() {
 	URL="${URL}&apiSig=${apiSig}"
 	curl -s "$URL" -o consumptionByCicle.json
 	if [ $VERBOSE -eq 1 ]; then json_pp < consumptionByCicle.json ; fi
+
+	J=$(cat consumptionByCicle.json)
+
+	startDate=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['startDate']" |cut -c 1-10)
+	endDate=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['endDate']" |cut -c 1-10)
+
+	start=$(date -d@${startDate} "+%d/%m/%y")
+	end=$(date -d@${endDate} "+%d/%m/%y")
+	echo
+	echo "Periodo de $start a $end"
+	echo
+
+	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voice']['count']")
+	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voice']['chargeTotal']")
+	hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
+	echo "Llamadas: ${hms} (${chargeTotal} EUR)"
+
+	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['sms']['count']")
+	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['sms']['chargeTotal']")
+	echo "SMS: ${count} (${chargeTotal} EUR)"
+
+	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['mms']['count']")
+	if [ $count -gt 0 ]; then
+		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['mms']['chargeTotal']")
+		echo "MMS: ${count} (${chargeTotal} EUR)"
+	fi
+
+	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['data']['count']")
+	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['data']['chargeTotal']")
+	count=$(echo "scale=2; $count/1024/1024" |bc) # bytes to megabytes
+	echo "Datos: ${count} MB (${chargeTotal} EUR)"
+
+	PRINT=0
+
+	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voicePremium']['count']")
+	if [ $count -gt 0 ]; then
+		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voicePremium']['chargeTotal']")
+		hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
+		if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
+		echo "Llamadas Premium: ${hms} (${chargeTotal} EUR)"
+	fi
+
+	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['smsPremium']['count']")
+	if [ $count -gt 0 ]; then
+		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['smsPremium']['chargeTotal']")
+		if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
+		echo "SMS Premium: ${count} (${chargeTotal} EUR)"
+	fi
+
+	PRINT=0
+
+	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceOutgoingRoaming']['count']")
+	if [ $count -gt 0 ]; then
+		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceOutgoingRoaming']['chargeTotal']")
+		hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
+		if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
+		echo "Llamadas Salientes Roaming: ${hms} (${chargeTotal} EUR)"
+	fi
+
+	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceIngoingRoaming']['count']")
+	if [ $count -gt 0 ]; then
+		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceIngoingRoaming']['chargeTotal']")
+		hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
+		if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
+		echo "Llamadas Entrantes Roaming: ${hms} (${chargeTotal} EUR)"
+	fi
+
+	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['smsRoaming']['count']")
+	if [ $count -gt 0 ]; then
+		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['smsRoaming']['chargeTotal']")
+		if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
+		echo "SMS Roaming: ${count} (${chargeTotal} EUR)"
+	fi
+
+	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['mmsRoaming']['count']")
+	if [ $count -gt 0 ]; then
+		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['mmsRoaming']['chargeTotal']")
+		if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
+		echo "MMS Roaming: ${count} (${chargeTotal} EUR)"
+	fi
+
+	count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['dataRoaming']['count']")
+	if [ $count -gt 0 ]; then
+		chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['dataRoaming']['chargeTotal']")
+		count=$(echo "scale=2; $count/1024/1024" |bc) # bytes to megabytes
+		if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
+		echo "Datos Roaming: ${count} MB (${chargeTotal} EUR)"
+	fi
+
+	echo
+
+	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['chargeTotal']")
+	echo "Consumo total: ${chargeTotal} EUR"
+	echo
 }
 
 #### consumptionDetailDetailByCycle
@@ -126,18 +244,59 @@ function invoiceList() {
 	URL="${URL}&apiSig=${apiSig}"
 	curl -s "$URL" -o invoiceList.json
 	if [ $VERBOSE -eq 1 ]; then json_pp < invoiceList.json ; fi
+
 }
 
-### TODO
-#https://www.simyo.es/api/invoiceList/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&registerDate=${registerDate}&publicKey=${kPublicKey}
-#https://www.simyo.es/api/downloadInvoice?sessionId=${sessionId}&invoiceNO=${invoiceNO}&invoiceId=${invoiceId}&publicKey=${kPublicKey}
-#https://www.simyo.es/api/contact?publicKey=${kPublicKey}
+#### printInvoiceList
+function printInvoiceList() {
+	for i in `seq 0 6` ; do
+		startDate=$(getJsonValue "['response']['invoiceList'][$i]['startDate']" invoiceList.json)
+		if [ $? -eq 0 ]; then
+			startDate=$(echo $startDate |cut -c 1-10)
+			endDate=$(getJsonValue "['response']['invoiceList'][$i]['endDate']" invoiceList.json)
+			endDate=$(echo $endDate |cut -c 1-10)
+			invoiceNO=$(getJsonValue "['response']['invoiceList'][$i]['invoiceNO']" invoiceList.json)
+			invoiceId=$(getJsonValue "['response']['invoiceList'][$i]['invoiceId']" invoiceList.json)
+			start=$(date -d@${startDate} "+%d/%m/%y")
+			end=$(date -d@${endDate} "+%d/%m/%y")
+			echo "Factura $invoiceNO (id=$invoiceId) del $start al $end"
+		fi
+	done
+}
 
-#https://www.simyo.es/api/frequentNumbers/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&registerDate=${registerDate}&month=${month}&publicKey=${kPublicKey}
-#https://www.simyo.es/api/messages/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&billCycle=${billCycle}&registerDate=${registerDate}&start=${start}&count=${count}&publicKey=${kPublicKey}
-#https://www.simyo.es/api/mgmHistory/${customerId}?sessionId=${sessionId}&publicKey=${kPublicKey}
-#https://www.simyo.es/api/rechargeHistory/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&registerDate=${registerDate}&startDate=${startDate}&endDate=${endDate}&publicKey=${kPublicKey}
-#https://www.simyo.es/api/voiceCalls/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&billCycle=${billCycle}&registerDate=${registerDate}&start=${start}&count=${count}&publicKey=${kPublicKey}
+#### downloadInvoice
+function downloadInvoice() {
+	invoiceList # we need invoiceList.json to find the invoiceNO
+	invoiceNO=""
+	for i in `seq 0 6` ; do
+		invoiceId=$(getJsonValue "['response']['invoiceList'][$i]['invoiceId']" invoiceList.json)
+		if [ $? -eq 0 ] && [ "$reqInvoiceId" = "$invoiceId" ] ; then
+			invoiceNO=$(getJsonValue "['response']['invoiceList'][$i]['invoiceNO']" invoiceList.json)
+			break
+		fi
+	done
+	if [ -z "$invoiceNO" ]; then
+		echo "Can't find invoice with id = $reqInvoiceId"
+		exit 1
+	fi
+
+	URL="https://www.simyo.es/api/downloadInvoice?sessionId=${sessionId}&invoiceNO=${invoiceNO}&invoiceId=${invoiceId}&publicKey=${kPublicKey}"
+	apiSig=$(getApiSig $URL)
+	URL="${URL}&apiSig=${apiSig}"
+	curl -s "$URL" -o downloadInvoice.json
+	if [ $VERBOSE -eq 1 ]; then json_pp < downloadInvoice.json ; fi
+
+	filename=$(getJsonValue "['response']['invoice']['filename']" downloadInvoice.json)
+	if [ -n "$filename" ]; then
+		echo "File: $filename"
+		content=$(getJsonValue "['response']['invoice']['content']" downloadInvoice.json)
+		echo $content |base64 -d > "./$filename"
+	else
+		echo "Oops... something went wrong downloading the invoice"
+		exit 1
+	fi
+
+}
 
 #### logout
 function api_logout() {
@@ -151,101 +310,28 @@ function api_logout() {
 
 api_login
 subscriptions
+if [ $INVOICELIST -eq 1 ]; then
+	invoiceList
+	printInvoiceList
+	api_logout
+	exit
+fi
+if [ -n "$reqInvoiceId" ]; then
+	downloadInvoice
+	api_logout
+	exit
+fi
+# default:
 consumptionByCycle
-#consumptionDetailDetailByCycle
-#invoiceList
 api_logout
 
-J=$(cat consumptionByCicle.json)
+#TODO
+#consumptionDetailDetailByCycle
 
-startDate=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['startDate']" |cut -c 1-10)
-endDate=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['endDate']" |cut -c 1-10)
-
-start=$(date -d@${startDate} "+%d/%m/%y")
-end=$(date -d@${endDate} "+%d/%m/%y")
-echo
-echo "Periodo de $start a $end"
-echo
-
-count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voice']['count']")
-chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voice']['chargeTotal']")
-hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
-echo "Llamadas: ${hms} (${chargeTotal} EUR)"
-
-count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['sms']['count']")
-chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['sms']['chargeTotal']")
-echo "SMS: ${count} (${chargeTotal} EUR)"
-
-count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['mms']['count']")
-if [ $count -gt 0 ]; then
-	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['mms']['chargeTotal']")
-	echo "MMS: ${count} (${chargeTotal} EUR)"
-fi
-
-count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['data']['count']")
-chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['data']['chargeTotal']")
-count=$(echo "scale=2; $count/1024/1024" |bc) # bytes to megabytes
-echo "Datos: ${count} MB (${chargeTotal} EUR)"
-
-PRINT=0
-
-count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voicePremium']['count']")
-if [ $count -gt 0 ]; then
-	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voicePremium']['chargeTotal']")
-	hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
-	if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
-	echo "Llamadas Premium: ${hms} (${chargeTotal} EUR)"
-fi
-
-count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['smsPremium']['count']")
-if [ $count -gt 0 ]; then
-	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['smsPremium']['chargeTotal']")
-	if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
-	echo "SMS Premium: ${count} (${chargeTotal} EUR)"
-fi
-
-PRINT=0
-
-count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceOutgoingRoaming']['count']")
-if [ $count -gt 0 ]; then
-	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceOutgoingRoaming']['chargeTotal']")
-	hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
-	if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
-	echo "Llamadas Salientes Roaming: ${hms} (${chargeTotal} EUR)"
-fi
-
-count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceIngoingRoaming']['count']")
-if [ $count -gt 0 ]; then
-	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceIngoingRoaming']['chargeTotal']")
-	hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
-	if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
-	echo "Llamadas Entrantes Roaming: ${hms} (${chargeTotal} EUR)"
-fi
-
-count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['smsRoaming']['count']")
-if [ $count -gt 0 ]; then
-	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['smsRoaming']['chargeTotal']")
-	if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
-	echo "SMS Roaming: ${count} (${chargeTotal} EUR)"
-fi
-
-count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['mmsRoaming']['count']")
-if [ $count -gt 0 ]; then
-	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['mmsRoaming']['chargeTotal']")
-	if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
-	echo "MMS Roaming: ${count} (${chargeTotal} EUR)"
-fi
-
-count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['dataRoaming']['count']")
-if [ $count -gt 0 ]; then
-	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['dataRoaming']['chargeTotal']")
-	count=$(echo "scale=2; $count/1024/1024" |bc) # bytes to megabytes
-	if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
-	echo "Datos Roaming: ${count} MB (${chargeTotal} EUR)"
-fi
-
-echo
-
-chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['chargeTotal']")
-echo "Consumo total: ${chargeTotal} EUR"
-echo
+#### TODO:
+#https://www.simyo.es/api/contact?publicKey=${kPublicKey}
+#https://www.simyo.es/api/frequentNumbers/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&registerDate=${registerDate}&month=${month}&publicKey=${kPublicKey}
+#https://www.simyo.es/api/messages/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&billCycle=${billCycle}&registerDate=${registerDate}&start=${start}&count=${count}&publicKey=${kPublicKey}
+#https://www.simyo.es/api/mgmHistory/${customerId}?sessionId=${sessionId}&publicKey=${kPublicKey}
+#https://www.simyo.es/api/rechargeHistory/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&registerDate=${registerDate}&startDate=${startDate}&endDate=${endDate}&publicKey=${kPublicKey}
+#https://www.simyo.es/api/voiceCalls/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&billCycle=${billCycle}&registerDate=${registerDate}&start=${start}&count=${count}&publicKey=${kPublicKey}
