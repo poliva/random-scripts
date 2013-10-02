@@ -194,7 +194,7 @@ if [ $count -gt 0 ]; then
 	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voicePremium']['chargeTotal']")
 	hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
 	if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
-	echo "Llamadas Premium: ${hms}s (${chargeTotal} EUR)"
+	echo "Llamadas Premium: ${hms} (${chargeTotal} EUR)"
 fi
 
 count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['smsPremium']['count']")
@@ -211,7 +211,7 @@ if [ $count -gt 0 ]; then
 	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceOutgoingRoaming']['chargeTotal']")
 	hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
 	if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
-	echo "Llamadas Salientes Roaming: ${hms}s (${chargeTotal} EUR)"
+	echo "Llamadas Salientes Roaming: ${hms} (${chargeTotal} EUR)"
 fi
 
 count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceIngoingRoaming']['count']")
@@ -219,7 +219,7 @@ if [ $count -gt 0 ]; then
 	chargeTotal=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['voiceIngoingRoaming']['chargeTotal']")
 	hms=$(echo "obase=60;${count}" | bc |sed -e "s/^ //" -e "s/$/ /g" |rev |sed -e "s/ /s/" -e "s/ /m/" -e "s/ /h/" -e "s/ /d/" |rev |sed -e "s/d/d /" -e "s/h/h /" -e "s/m/m /")
 	if [ $PRINT -eq 0 ]; then echo ; PRINT=1 ; fi
-	echo "Llamadas Entrantes Roaming: ${hms}s (${chargeTotal} EUR)"
+	echo "Llamadas Entrantes Roaming: ${hms} (${chargeTotal} EUR)"
 fi
 
 count=$(python -c "import json;print json.loads('$J')['response']['consumptionsByCycle'][0]['smsRoaming']['count']")
