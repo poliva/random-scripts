@@ -227,8 +227,8 @@ function consumptionByCycle() {
 	echo
 }
 
-#### consumptionDetailDetailByCycle
-function consumptionDetailDetailByCycle() {
+#### consumptionDetailByCycle
+function consumptionDetailByCycle() {
 	URL="https://www.simyo.es/api/consumptionDetailByCycle/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&billCycle=${billCycle}&registerDate=${registerDate}&billCycleCount=${billCycleCount}&payType=${payType}&publicKey=${kPublicKey}"
 	apiSig=$(getApiSig $URL)
 	URL="${URL}&apiSig=${apiSig}"
@@ -236,6 +236,58 @@ function consumptionDetailDetailByCycle() {
 	if [ $VERBOSE -eq 1 ]; then json_pp < consumptionDetailByCicle.json ; fi
 }
 
+#### frequentNumbers
+function frequentNumbers() {
+	month=$billCycle # Parameter month is mandatory
+	URL="https://www.simyo.es/api/frequentNumbers/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&registerDate=${registerDate}&month=${month}&publicKey=${kPublicKey}"
+	apiSig=$(getApiSig $URL)
+	URL="${URL}&apiSig=${apiSig}"
+	curl -s "$URL" -o frequentNumbers.json
+	if [ $VERBOSE -eq 1 ]; then json_pp < frequentNumbers.json ; fi
+}
+
+#### messages
+function messages() {
+	local start=1
+	local count=500
+	URL="https://www.simyo.es/api/messages/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&billCycle=${billCycle}&registerDate=${registerDate}&start=${start}&count=${count}&publicKey=${kPublicKey}"
+	apiSig=$(getApiSig $URL)
+	URL="${URL}&apiSig=${apiSig}"
+	curl -s "$URL" -o messages.json
+	if [ $VERBOSE -eq 1 ]; then json_pp < messages.json ; fi
+}
+
+#### mgmHistory
+function mgmHistory() {
+	URL="https://www.simyo.es/api/mgmHistory/${customerId}?sessionId=${sessionId}&publicKey=${kPublicKey}"
+	apiSig=$(getApiSig $URL)
+	URL="${URL}&apiSig=${apiSig}"
+	curl -s "$URL" -o mgmHistory.json
+	if [ $VERBOSE -eq 1 ]; then json_pp < mgmHistory.json ; fi
+}
+
+#### voiceCalls
+function voiceCalls() {
+	local start=1
+	local count=500
+	URL="https://www.simyo.es/api/voiceCalls/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&billCycle=${billCycle}&registerDate=${registerDate}&start=${start}&count=${count}&publicKey=${kPublicKey}"
+	apiSig=$(getApiSig $URL)
+	URL="${URL}&apiSig=${apiSig}"
+	curl -s "$URL" -o voiceCalls.json
+	if [ $VERBOSE -eq 1 ]; then json_pp < voiceCalls.json ; fi
+}
+
+#### rechargeHistory
+function rechargeHistory() {
+	local startDate=$registerDate
+	local endDate=$(date '+%s')
+	endDate=$(($endDate * 1000))
+	URL="https://www.simyo.es/api/rechargeHistory/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&registerDate=${registerDate}&startDate=${startDate}&endDate=${endDate}&publicKey=${kPublicKey}"
+	apiSig=$(getApiSig $URL)
+	URL="${URL}&apiSig=${apiSig}"
+	curl -s "$URL" -o rechargeHistory.json
+	if [ $VERBOSE -eq 1 ]; then json_pp < rechargeHistory.json ; fi
+}
 
 #### invoiceList
 function invoiceList() {
@@ -295,7 +347,6 @@ function downloadInvoice() {
 		echo "Oops... something went wrong downloading the invoice"
 		exit 1
 	fi
-
 }
 
 #### logout
@@ -325,13 +376,11 @@ fi
 consumptionByCycle
 api_logout
 
-#TODO
-#consumptionDetailDetailByCycle
-
-#### TODO:
+#TODO:
+#consumptionDetailByCycle
+#frequentNumbers
+#messages
+#mgmHistory
+#voiceCalls
+#rechargeHistory
 #https://www.simyo.es/api/contact?publicKey=${kPublicKey}
-#https://www.simyo.es/api/frequentNumbers/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&registerDate=${registerDate}&month=${month}&publicKey=${kPublicKey}
-#https://www.simyo.es/api/messages/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&billCycle=${billCycle}&registerDate=${registerDate}&start=${start}&count=${count}&publicKey=${kPublicKey}
-#https://www.simyo.es/api/mgmHistory/${customerId}?sessionId=${sessionId}&publicKey=${kPublicKey}
-#https://www.simyo.es/api/rechargeHistory/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&registerDate=${registerDate}&startDate=${startDate}&endDate=${endDate}&publicKey=${kPublicKey}
-#https://www.simyo.es/api/voiceCalls/${customerId}?msisdn=${msisdn}&sessionId=${sessionId}&billCycleType=${billCycleType}&billCycle=${billCycle}&registerDate=${registerDate}&start=${start}&count=${count}&publicKey=${kPublicKey}
