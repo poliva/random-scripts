@@ -17,6 +17,8 @@ if [ -z "$USERNAME" ]; then
 	exit 1
 fi
 
+MSISDN=""
+SHOWMSISDN=0
 INVOICELIST=0
 INVOICEDOWNLOAD=0
 VERBOSE=0
@@ -34,13 +36,22 @@ for opt in $* ; do
 			INVOICEDOWNLOAD=1
 			continue
 		;;
+		"-m")
+			VAL="MSISDN"
+			continue
+		;;
+		"-s")
+			SHOWMSISDN=1
+		;;
 		"-h")
-			echo "Usage: $0 [-h|-v|-b num|-l|-d id]"
+			echo "Usage: $0 [-h|-v|-b num|-l|-d id|-m num|-s]"
 			echo "    -h     : show this help"
 			echo "    -v     : verbose mode"
 			echo "    -b num : bill cycle (from 1 to 6)"
 			echo "    -l     : invoice list"
 			echo "    -d id  : download invoice"
+			echo "    -m num : msisdn if you have more than 1 line"
+			echo "    -s     : show user's msisdn"
 			exit 0
 		;;
 	esac
@@ -51,6 +62,10 @@ for opt in $* ; do
 		;;
 		"reqInvoiceId")
 			reqInvoiceId=$opt
+			VAL=""
+		;;
+		"MSISDN")
+			MSISDN=$opt
 			VAL=""
 		;;
 		*) VAL="" ;;
@@ -116,12 +131,25 @@ function subscriptions() {
 	curl -s "$URL" -o subscriptions.json
 	if [ $VERBOSE -eq 1 ]; then json_pp < subscriptions.json ; fi
 
-	registerDate=$(getJsonValue "['response']['subcriptions'][0]['registerDate']" subscriptions.json)
-	mainProductId=$(getJsonValue "['response']['subcriptions'][0]['mainProductId']" subscriptions.json)
-	billCycleType=$(getJsonValue "['response']['subcriptions'][0]['billCycleType']" subscriptions.json)
-	msisdn=$(getJsonValue "['response']['subcriptions'][0]['msisdn']" subscriptions.json)
-	subscriberId=$(getJsonValue "['response']['subcriptions'][0]['subscriberId']" subscriptions.json)
-	payType=$(getJsonValue "['response']['subcriptions'][0]['payType']" subscriptions.json)
+	len=$(cat subscriptions.json  |grep -o "msisdn" |wc -l)
+	for i in `seq $(( $len - 1 )) -1 0` ; do
+		registerDate=$(getJsonValue "['response']['subcriptions'][$i]['registerDate']" subscriptions.json)
+		mainProductId=$(getJsonValue "['response']['subcriptions'][$i]['mainProductId']" subscriptions.json)
+		billCycleType=$(getJsonValue "['response']['subcriptions'][$i]['billCycleType']" subscriptions.json)
+		msisdn=$(getJsonValue "['response']['subcriptions'][$i]['msisdn']" subscriptions.json)
+		subscriberId=$(getJsonValue "['response']['subcriptions'][$i]['subscriberId']" subscriptions.json)
+		payType=$(getJsonValue "['response']['subcriptions'][$i]['payType']" subscriptions.json)
+		if [ "$SHOWMSISDN" -eq 1 ] ; then
+			echo "MSISDN: $msisdn (product=$mainProductId)"
+		else
+			if [ "$msisdn" = "$MSISDN" ]; then
+				break
+			fi
+		fi
+	done
+	if [ "$SHOWMSISDN" -eq 1 ] ; then
+		exit 0
+	fi
 }
 
 #### consumptionByCycle
