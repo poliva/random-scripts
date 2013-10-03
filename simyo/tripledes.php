@@ -8,8 +8,7 @@ echo urlencode("$str\n")."\n";
 
 function simyoize_password($input) {
 	$binarydata = pack("C*", 0x8);
-	$len = strlen($input);
-	for ($i=$len;$i<16;$i++) {
+	for ($i=0;$i<8;$i++) {
 		$input.=$binarydata;
 	}
 	return "$input";
@@ -30,7 +29,9 @@ function decrypt($encrypted_text,$key){
         $iv = mcrypt_create_iv(mcrypt_enc_get_iv_size($cipher), MCRYPT_RAND);
     	$key = substr($key, 0, mcrypt_enc_get_key_size($cipher));
 	mcrypt_generic_init($cipher, $key, $iv);
-	$decrypted = mdecrypt_generic($cipher,base64_decode($encrypted_text));
+	$decrypted = mdecrypt_generic($cipher,base64_decode(urldecode($encrypted_text)));
 	mcrypt_generic_deinit($cipher);
 	return $decrypted;
 }
+
+?>
