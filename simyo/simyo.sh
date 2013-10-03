@@ -19,6 +19,7 @@ fi
 
 MSISDN=""
 SHOWMSISDN=0
+SHOWMGM=0
 INVOICELIST=0
 INVOICEDOWNLOAD=0
 VERBOSE=0
@@ -43,8 +44,11 @@ for opt in $* ; do
 		"-s")
 			SHOWMSISDN=1
 		;;
+		"-g")
+			SHOWMGM=1
+		;;
 		"-h")
-			echo "Usage: $0 [-h|-v|-b num|-l|-d id|-m num|-s]"
+			echo "Usage: $0 [-h|-v|-b num|-l|-d id|-m num|-s|-g]"
 			echo "    -h     : show this help"
 			echo "    -v     : verbose mode"
 			echo "    -b num : bill cycle (from 1 to 6)"
@@ -52,6 +56,7 @@ for opt in $* ; do
 			echo "    -d id  : download invoice"
 			echo "    -m num : msisdn if you have more than 1 line"
 			echo "    -s     : show user's msisdn"
+			echo "    -g     : show member-get-member history"
 			exit 0
 		;;
 	esac
@@ -293,6 +298,14 @@ function mgmHistory() {
 	URL="${URL}&apiSig=${apiSig}"
 	curl -s "$URL" -o mgmHistory.json
 	if [ $VERBOSE -eq 1 ]; then json_pp < mgmHistory.json ; fi
+
+	receivedPoints=$(getJsonValue "['response']['mgmHistoryList']['receivedPoints']" mgmHistory.json)
+	usedPoints=$(getJsonValue "['response']['mgmHistoryList']['usedPoints']" mgmHistory.json)
+	totalAvailablePoints=$(getJsonValue "['response']['mgmHistoryList']['totalAvailablePoints']" mgmHistory.json)
+
+	echo "EUROS GANADOS: $receivedPoints"
+	echo "EUROS GASTADOS: $usedPoints"
+	echo "TOTAL DISPONIBLE: $totalAvailablePoints"
 }
 
 #### voiceCalls
@@ -390,6 +403,11 @@ function api_logout() {
 
 api_login
 subscriptions
+if [ $SHOWMGM -eq 1 ]; then
+	mgmHistory
+	api_logout
+	exit
+fi
 if [ $INVOICELIST -eq 1 ]; then
 	invoiceList
 	printInvoiceList
@@ -409,7 +427,6 @@ api_logout
 #consumptionDetailByCycle
 #frequentNumbers
 #messages
-#mgmHistory
 #voiceCalls
 #rechargeHistory
 #https://www.simyo.es/api/contact?publicKey=${kPublicKey}
