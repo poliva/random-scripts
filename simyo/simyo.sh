@@ -148,6 +148,7 @@ function subscriptions() {
 		fi
 	done
 	if [ "$SHOWMSISDN" -eq 1 ] ; then
+		api_logout
 		exit 0
 	fi
 }
