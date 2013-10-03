@@ -26,7 +26,7 @@ json response.
 Usage:
 <pre>
 pau@maco:~/simyo$ ./simyo.sh -h
-Usage: ./simyo.sh [-h|-v|-b num|-l|-d id|-m num|-s]
+Usage: ./simyo.sh [-h|-v|-b num|-l|-d id|-m num|-s|-g]
     -h     : show this help
     -v     : verbose mode
     -b num : bill cycle (from 1 to 6)
@@ -34,6 +34,7 @@ Usage: ./simyo.sh [-h|-v|-b num|-l|-d id|-m num|-s]
     -d id  : download invoice
     -m num : msisdn if you have more than 1 line
     -s     : show user's msisdn
+    -g     : show member-get-member history
 </pre>
 
 Current billing cycle:
