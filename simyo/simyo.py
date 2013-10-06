@@ -20,6 +20,9 @@ import hmac
 import hashlib
 import json
 import datetime
+import pprint
+import collections
+from time import time
 
 __author__ = 'Pau Oliva Fora'
 
@@ -41,6 +44,21 @@ def writeFile(filename, content):
 	in_file = open(filename,"wb")
 	in_file.write(content)
 	in_file.close()
+
+def convert(data):
+	# http://stackoverflow.com/q/1254454/
+	if isinstance(data, basestring):
+		return str(data)
+	elif isinstance(data, collections.Mapping):
+		return dict(map(convert, data.iteritems()))
+	elif isinstance(data, collections.Iterable):
+		return type(data)(map(convert, data))
+	else:
+		return data
+
+def epoch2date(timestamp, format='%d/%m/%Y'):
+	timestamp = str(timestamp)[0:10]
+	return datetime.datetime.fromtimestamp(int(timestamp)).strftime(format)
 
 def api_request(url, data=""):
 	kPublicKey="a654fb77dc654a17f65f979ba8794c34"
@@ -126,10 +144,8 @@ def consumptionByCycle():
 
 	startDate=data['response']['consumptionsByCycle'][0]['startDate']
 	endDate=data['response']['consumptionsByCycle'][0]['endDate']
-	startDate = str(startDate)[0:10]
-	endDate = str(endDate)[0:10]
-	start = datetime.datetime.fromtimestamp(int(startDate)).strftime('%d/%m/%Y')
-	end = datetime.datetime.fromtimestamp(int(endDate)).strftime('%d/%m/%Y')
+	start = epoch2date(startDate)
+	end = epoch2date(endDate)
 	print "\nPeriodo de " + start + " a " + end + "\n"
 
 	count = data['response']['consumptionsByCycle'][0]['voice']['count']
@@ -204,6 +220,72 @@ def consumptionByCycle():
 	chargeTotal = float(data['response']['consumptionsByCycle'][0]['chargeTotal'])
 	print "\nConsumo total: " + str(chargeTotal) + " EUR\n"
 
+def consumptionDetailByCycle():
+	billCycleCount=""
+	URL="https://www.simyo.es/api/consumptionDetailByCycle/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&registerDate=" + str(registerDate) + "&billCycleCount=" + str(billCycleCount) + "&payType=" + str(payType)
+	result = api_request(URL)
+	if VERBOSE: print result + "\n"
+
+	data = convert(json.loads(result)['response']['consumptionDetailByCycleList'])
+	pp = pprint.PrettyPrinter(indent=4)
+	pp.pprint(data)
+
+def frequentNumbers():
+	month=billCycle # Parameter month is mandatory
+	URL="https://www.simyo.es/api/frequentNumbers/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&registerDate=" + str(registerDate) + "&month=" + str(month)
+	result = api_request(URL)
+	if VERBOSE: print result + "\n"
+
+	data = convert(json.loads(result)['response'])
+	pp = pprint.PrettyPrinter(indent=4)
+	pp.pprint(data)
+
+def messages():
+	start=1
+	count=500
+	URL="https://www.simyo.es/api/messages/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&billCycle=" + str(billCycle) + "&registerDate=" + str(registerDate) + "&start=" + str(start) + "&count=" + str(count)
+	result = api_request(URL)
+	if VERBOSE: print result + "\n"
+
+	data = convert(json.loads(result)['response'])
+	pp = pprint.PrettyPrinter(indent=4)
+	pp.pprint(data)
+
+def voiceCalls():
+	start=1
+	count=500
+	URL="https://www.simyo.es/api/voiceCalls/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&billCycle=" + str(billCycle) + "&registerDate=" + str(registerDate) + "&start=" + str(start) + "&count=" + str(count)
+	result = api_request(URL)
+	if VERBOSE: print result + "\n"
+
+	data = json.loads(result)
+	startDate=data['response']['voiceCalls']['startDate']
+	endDate=data['response']['voiceCalls']['endDate']
+	start = epoch2date(startDate)
+	end = epoch2date(endDate)
+	print "\nPeriodo de " + start + " a " + end + "\n"
+
+	print  "date                type duration category msisdn"
+	print  "------------------- ---- -------- -------- -----------"
+	for call in data['response']['voiceCalls']['voiceCallInfo']:
+		date = epoch2date(call['date'], '%d/%m/%Y %H:%M:%S')
+		duration = datetime.timedelta(seconds=call['duration'])
+		print '{0}    {1}  {2}       {3} {4}'.format(date, call['type'], duration, call['category'], call['msisdn'])
+	print
+
+def rechargeHistory():
+	startDate=registerDate
+	endDate = time()
+	endDate = int(endDate) * 1000
+	URL="https://www.simyo.es/api/rechargeHistory/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&registerDate=" + str(registerDate) + "&startDate=" + str(startDate) + "&endDate=" + str(endDate)
+	result = api_request(URL)
+	if VERBOSE: print result + "\n"
+
+	print "\nHistorial de regargas:\n"
+	data = convert(json.loads(result)['response']['rechargeHistory'])
+	pp = pprint.PrettyPrinter(indent=4)
+	pp.pprint(data)
+
 def mgmHistory():
 	URL="https://www.simyo.es/api/mgmHistory/" + str(customerId) + "?sessionId=" + str(sessionId)
 	result = api_request(URL)
@@ -230,13 +312,11 @@ def printInvoiceList():
 	data = invoiceList()
 	for invoice in data['response']['invoiceList']:
 		startDate=invoice['startDate']
-		startDate = str(startDate)[0:10]
 		endDate=invoice['endDate']
-		endDate = str(endDate)[0:10]
 		invoiceNO=invoice['invoiceNO']
 		invoiceId=invoice['invoiceId']
-		start = datetime.datetime.fromtimestamp(int(startDate)).strftime('%d/%m/%Y')
-		end = datetime.datetime.fromtimestamp(int(endDate)).strftime('%d/%m/%Y')
+		start = epoch2date(startDate)
+		end = epoch2date(endDate)
 		print "Factura " + str(invoiceNO) + " (id=" + str(invoiceId) + ") del " + str(start) + " al " + str(end)
 
 def downloadInvoice():
@@ -261,17 +341,24 @@ def downloadInvoice():
 	writeFile(filename, content)
 
 def parse_cmd():
-	global VERBOSE, INVOICELIST, MSISDN, SHOWMSISDN, SHOWMGM, INVOICEDOWNLOAD
+	global VERBOSE, INVOICELIST, MSISDN, SHOWMSISDN, SHOWMGM, INVOICEDOWNLOAD, VOICECALLS, MESSAGES, RECHARGE, FREQUENT, BYDAY
 	global billCycle, reqInvoiceId
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', help='verbose mode')
-	parser.add_argument('-b', '--billcycle', dest='billCycle', help='bill cycle (from 1 to 6), default=1')
-	parser.add_argument('-l', '--listinvoice', dest='invoicelist', action='store_true', help='list invoices')
-	parser.add_argument('-d', '--downloadinvoice', dest='invoice_id', help='download invoice')
-	parser.add_argument('-m', '--msisdn', dest='msisdn', help='msisdn if you have more than 1 line')
-	parser.add_argument('-s', '--showmsisdn', dest='showmsisdn', action='store_true', help='show user\'s msisdn')
+	parser.add_argument('-c', '--bycycle', dest='bycyle', action='store_true', help='show consumption detail by billing cycle (default)')
+	parser.add_argument('-y', '--byday', dest='byday', action='store_true', help='show consumption detail by day')
+	parser.add_argument('-l', '--listinvoice', dest='invoicelist', action='store_true', help='list all downloadable invoices')
+	parser.add_argument('-s', '--showmsisdn', dest='showmsisdn', action='store_true', help='list the msisdns available in the account')
 	parser.add_argument('-g', '--mgm', dest='showmgm', action='store_true', help='show member-get-member history')
+	parser.add_argument('-o', '--voicecalls', dest='voicecalls', action='store_true', help='show voice call records')
+	parser.add_argument('-e', '--messages', dest='messages', action='store_true', help='show sms records')
+	parser.add_argument('-r', '--recharge', dest='recharge', action='store_true', help='show recharge history')
+	parser.add_argument('-f', '--frequent', dest='frequent', action='store_true', help='show frequent numbers')
+
+	parser.add_argument('-b', '--billcycle', dest='billCycle', help='specify the billing cycle (from 1 to 6), default=1')
+	parser.add_argument('-m', '--msisdn', dest='msisdn', help='specify the msisdn if you have more than 1 line')
+	parser.add_argument('-d', '--download', dest='invoice_id', help='download invoice specified by INVOICE_ID')
 	args = parser.parse_args()
 
 	if USERNAME=="":
@@ -283,6 +370,11 @@ def parse_cmd():
 	SHOWMSISDN = args.showmsisdn
 	SHOWMGM = args.showmgm
 	INVOICELIST = args.invoicelist
+	VOICECALLS = args.voicecalls
+	MESSAGES = args.messages
+	RECHARGE = args.recharge
+	FREQUENT = args.frequent
+	BYDAY = args.byday
 
 	if args.invoice_id == None:
 		INVOICEDOWNLOAD=0
@@ -303,6 +395,26 @@ if __name__ == '__main__':
 	parse_cmd()
 	api_login()
 	subscriptions()
+	if BYDAY:
+		consumptionDetailByCycle()
+		api_logout()
+		sys.exit(0)
+	if FREQUENT:
+		frequentNumbers()
+		api_logout()
+		sys.exit(0)
+	if RECHARGE:
+		rechargeHistory()
+		api_logout()
+		sys.exit(0)
+	if MESSAGES:
+		messages()
+		api_logout()
+		sys.exit(0)
+	if VOICECALLS:
+		voiceCalls()
+		api_logout()
+		sys.exit(0)
 	if SHOWMGM:
 		mgmHistory()
 		api_logout()
@@ -315,13 +427,10 @@ if __name__ == '__main__':
 		downloadInvoice()
 		api_logout()
 		sys.exit(0)
+	# default if no parameters specified
 	consumptionByCycle()
 	api_logout()
+	sys.exit(0)
 
 #TODO:
-#consumptionDetailByCycle
-#frequentNumbers
-#messages
-#voiceCalls
-#rechargeHistory
 #https://www.simyo.es/api/contact
