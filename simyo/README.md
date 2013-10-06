@@ -23,22 +23,27 @@ json response.
 Usage:
 <pre>
 pau@maco:~/simyo$ ./simyo.py -h
-usage: simyo.py [-h] [-v] [-b BILLCYCLE] [-l] [-d INVOICE_ID] [-m MSISDN] [-s]
-                [-g]
+usage: simyo.py [-h] [-v] [-c] [-y] [-l] [-s] [-g] [-o] [-e] [-r] [-f]
+                [-b BILLCYCLE] [-m MSISDN] [-d INVOICE_ID]
 
 optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose         verbose mode
-  -b BILLCYCLE, --billcycle BILLCYCLE
-                        bill cycle (from 1 to 6), default=1
-  -l, --listinvoice     list invoices
-  -d INVOICE_ID, --downloadinvoice INVOICE_ID
-                        download invoice
-  -m MSISDN, --msisdn MSISDN
-                        msisdn if you have more than 1 line
-  -s, --showmsisdn      show user's msisdn
+  -c, --bycycle         show consumption detail by billing cycle (default)
+  -y, --byday           show consumption detail by day
+  -l, --listinvoice     list all downloadable invoices
+  -s, --showmsisdn      list the msisdns available in the account
   -g, --mgm             show member-get-member history
-pau@maco:~/Development/random-scripts/simyo$ 
+  -o, --voicecalls      show voice call records
+  -e, --messages        show sms records
+  -r, --recharge        show recharge history
+  -f, --frequent        show frequent numbers
+  -b BILLCYCLE, --billcycle BILLCYCLE
+                        specify the billing cycle (from 1 to 6), default=1
+  -m MSISDN, --msisdn MSISDN
+                        specify the msisdn if you have more than 1 line
+  -d INVOICE_ID, --download INVOICE_ID
+                        download invoice specified by INVOICE_ID
 </pre>
 
 Current billing cycle:
