@@ -254,9 +254,20 @@ def messages():
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
-	data = convert(json.loads(result)['response'])
-	pp = pprint.PrettyPrinter(indent=4)
-	pp.pprint(data)
+	data = json.loads(result)
+	startDate=data['response']['sms']['startDate']
+	endDate=data['response']['sms']['endDate']
+	start = epoch2date(startDate)
+	end = epoch2date(endDate)
+	print "\nPeriodo de " + start + " a " + end + "\n"
+
+	print  "date			cost		duration	category	msisdn"
+	print  "-------------------	--------	--------	--------	-----------"
+	for sms in reversed(data['response']['sms']['messagesInfo']):
+		date = epoch2date(sms['date'], '%d/%m/%Y %H:%M:%S')
+		duration = datetime.timedelta(seconds=sms['duration'])
+		print '{0}\t{1}\t{2}\t\t{3}\t\t{4}'.format(date, sms['charge'], duration, sms['category'], sms['msisdn'])
+	print
 
 def voiceCalls():
 	start=1
