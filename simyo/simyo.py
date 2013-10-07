@@ -222,7 +222,7 @@ def consumptionByCycle():
 
 def consumptionDetailByCycle():
 	billCycleCount=""
-	URL="https://www.simyo.es/api/consumptionDetailByCycle/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&registerDate=" + str(registerDate) + "&billCycleCount=" + str(billCycleCount) + "&payType=" + str(payType)
+	URL="https://www.simyo.es/api/consumptionDetailByCycle/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&billCycle=" + str(billCycle) + "&registerDate=" + str(registerDate) + "&billCycleCount=" + str(billCycleCount) + "&payType=" + str(payType)
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
