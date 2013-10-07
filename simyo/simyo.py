@@ -243,9 +243,11 @@ def frequentNumbers():
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
-	data = convert(json.loads(result)['response'])
-	pp = pprint.PrettyPrinter(indent=4)
-	pp.pprint(data)
+	data = json.loads(result)
+	print "msisdn\t\tcount"
+	print "-----------\t-----"
+	for num in data['response']['frequentNumbers']:
+		print '{0}\t{1}'.format(num['msisdn'], num['count'])
 
 def messages():
 	start=1
