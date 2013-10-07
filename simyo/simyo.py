@@ -265,7 +265,7 @@ def consumptionDetailByCycle(billCycleCount=1):
 		# premium
 		if 'voicePremium' in day:
 			hms = datetime.timedelta(seconds=day['voicePremium']['count'])
-			print "\tPREMIUM incoming voice: {0} ({1} EUR)".format (hms, float(day['voicePremium']['chargeTotal']))
+			print "\tPREMIUM voice: {0} ({1} EUR)".format (hms, float(day['voicePremium']['chargeTotal']))
 		if 'smsPremium' in day:
 			print "\tPREMIUM sms: {0} ({1} EUR)".format (day['smsPremium']['count'], float(day['smsPremium']['chargeTotal']))
 
