@@ -233,9 +233,30 @@ def consumptionDetailByCycle(billCycleCount=1):
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
-	data = convert(json.loads(result)['response']['consumptionDetailByCycleList'])
-	pp = pprint.PrettyPrinter(indent=4)
-	pp.pprint(data)
+	data = json.loads(result)
+	startDate=data['response']['consumptionDetailByCycleList'][0]['startDate']
+	endDate=data['response']['consumptionDetailByCycleList'][0]['endDate']
+	start = epoch2date(startDate)
+	end = epoch2date(endDate)
+	print "\nPeriodo de " + start + " a " + end + "\n"
+
+	for day in data['response']['consumptionDetailByCycleList'][0]['consumptionsByDay']:
+		date = epoch2date(day['date'])
+		totalCharge = float(day['totalCharge'])
+		print "{0} charge: {1}".format(date, totalCharge)
+		if 'data' in day:
+			print "\tdata: {0:.2f} MB ({1} EUR)".format(day['data']['count']/1024.0/1024.0, float(day['data']['chargeTotal']))
+		else:
+			print "\tdata: 0 MB (0 EUR)"
+		if 'voice' in day:
+			hms = datetime.timedelta(seconds=day['voice']['count'])
+			print "\tvoice: {0} ({1} EUR)".format (hms, float(day['voice']['chargeTotal']))
+		else:
+			print "\tvoice: 0:00:00 (0 EUR)"
+		if 'sms' in day:
+			print "\tsms: {0} ({1} EUR)".format (day['sms']['count'], float(day['sms']['chargeTotal']))
+		else:
+			print "\tsms: 0 (0 EUR)"
 
 def frequentNumbers():
 	month=billCycle # Parameter month is mandatory
