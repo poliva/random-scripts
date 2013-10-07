@@ -60,7 +60,7 @@ def epoch2date(timestamp, format='%d/%m/%Y'):
 	timestamp = str(timestamp)[0:10]
 	return datetime.datetime.fromtimestamp(int(timestamp)).strftime(format)
 
-def api_request(url, data=""):
+def api_request(url, data="", check=True):
 	kPublicKey="a654fb77dc654a17f65f979ba8794c34"
 
 	if url[-1:] == "?":
@@ -90,11 +90,20 @@ def api_request(url, data=""):
 		print "Unexpected error :("
 		raise
 
+	if check==True:
+		data = json.loads(result)['header']
+		if int(data['code']) != 100:
+			print "ERROR in request:\n" + str(url) + "\n"
+			data = convert(data)
+			pp = pprint.PrettyPrinter(indent=0)
+			pp.pprint(data)
+			sys.exit(1)
+
 	return result
 
 def api_logout():
 	URL="https://www.simyo.es/api/logout?sessionId=" + str(sessionId)
-	result = api_request(URL)
+	result = api_request(URL,"",False)
 	if VERBOSE: print result + "\n"
 
 def api_login():
@@ -134,8 +143,7 @@ def subscriptions():
 		api_logout()
 		sys.exit(0)
 
-def consumptionByCycle():
-	billCycleCount=""
+def consumptionByCycle(billCycleCount=1):
 	URL="https://www.simyo.es/api/consumptionByCycle/" + str(customerId) + "?sessionId=" + str(sessionId) + "&msisdn=" + str(msisdn) + "&billCycleType=" + str(billCycleType) + "&registerDate=" + str(registerDate) + "&billCycle=" + str(billCycle) + "&billCycleCount=" + str(billCycleCount) + "&payType=" + str(payType)
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
