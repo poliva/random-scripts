@@ -228,8 +228,7 @@ def consumptionByCycle(billCycleCount=1):
 	chargeTotal = float(data['response']['consumptionsByCycle'][0]['chargeTotal'])
 	print "\nConsumo total: " + str(chargeTotal) + " EUR\n"
 
-def consumptionDetailByCycle():
-	billCycleCount=""
+def consumptionDetailByCycle(billCycleCount=1):
 	URL="https://www.simyo.es/api/consumptionDetailByCycle/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&billCycle=" + str(billCycle) + "&registerDate=" + str(registerDate) + "&billCycleCount=" + str(billCycleCount) + "&payType=" + str(payType)
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
@@ -273,12 +272,18 @@ def voiceCalls():
 	end = epoch2date(endDate)
 	print "\nPeriodo de " + start + " a " + end + "\n"
 
-	print  "date                type duration category msisdn"
-	print  "------------------- ---- -------- -------- -----------"
-	for call in data['response']['voiceCalls']['voiceCallInfo']:
+	print  "date			type		duration	category	msisdn"
+	print  "-------------------	--------	--------	--------	-----------"
+	for call in reversed(data['response']['voiceCalls']['voiceCallInfo']):
 		date = epoch2date(call['date'], '%d/%m/%Y %H:%M:%S')
+		if call['type'] == 1:
+			calltype="Outgoing"
+		elif call['type'] == 2:
+			calltype="Incoming"
+		else:
+			calltype=call['type']
 		duration = datetime.timedelta(seconds=call['duration'])
-		print '{0}    {1}  {2}       {3} {4}'.format(date, call['type'], duration, call['category'], call['msisdn'])
+		print '{0}\t{1}\t{2}\t\t{3}\t\t{4}'.format(date, calltype, duration, call['category'], call['msisdn'])
 	print
 
 def rechargeHistory():
