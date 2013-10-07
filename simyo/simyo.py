@@ -244,19 +244,45 @@ def consumptionDetailByCycle(billCycleCount=1):
 		date = epoch2date(day['date'])
 		totalCharge = float(day['totalCharge'])
 		print "{0} charge: {1}".format(date, totalCharge)
-		if 'data' in day:
-			print "\tdata: {0:.2f} MB ({1} EUR)".format(day['data']['count']/1024.0/1024.0, float(day['data']['chargeTotal']))
-		else:
-			print "\tdata: 0 MB (0 EUR)"
+
+		# regular
 		if 'voice' in day:
 			hms = datetime.timedelta(seconds=day['voice']['count'])
 			print "\tvoice: {0} ({1} EUR)".format (hms, float(day['voice']['chargeTotal']))
 		else:
-			print "\tvoice: 0:00:00 (0 EUR)"
+			print "\tvoice: 0:00:00 (0.0 EUR)"
 		if 'sms' in day:
 			print "\tsms: {0} ({1} EUR)".format (day['sms']['count'], float(day['sms']['chargeTotal']))
 		else:
-			print "\tsms: 0 (0 EUR)"
+			print "\tsms: 0 (0.0 EUR)"
+		if 'mms' in day:
+			print "\tmms: {0} ({1} EUR)".format (day['mms']['count'], float(day['mms']['chargeTotal']))
+		if 'data' in day:
+			print "\tdata: {0:.2f} MB ({1} EUR)".format(day['data']['count']/1024.0/1024.0, float(day['data']['chargeTotal']))
+		else:
+			print "\tdata: 0 MB (0.0 EUR)"
+
+		# premium
+		if 'voicePremium' in day:
+			hms = datetime.timedelta(seconds=day['voicePremium']['count'])
+			print "\tPREMIUM incoming voice: {0} ({1} EUR)".format (hms, float(day['voicePremium']['chargeTotal']))
+		if 'smsPremium' in day:
+			print "\tPREMIUM sms: {0} ({1} EUR)".format (day['smsPremium']['count'], float(day['smsPremium']['chargeTotal']))
+
+		# roaming
+		if 'voiceIngoingRoaming' in day:
+			hms = datetime.timedelta(seconds=day['voiceIngoingRoaming']['count'])
+			print "\tROAMING incoming voice: {0} ({1} EUR)".format (hms, float(day['voiceIngoingRoaming']['chargeTotal']))
+		if 'voiceOutgoingRoaming' in day:
+			hms = datetime.timedelta(seconds=day['voiceOutgoingRoaming']['count'])
+			print "\tROAMING outgoing voice: {0} ({1} EUR)".format (hms, float(day['voiceOutgoingRoaming']['chargeTotal']))
+		if 'smsRoaming' in day:
+			print "\tROAMING sms: {0} ({1} EUR)".format (day['smsRoaming']['count'], float(day['smsRoaming']['chargeTotal']))
+		if 'mmsRoaming' in day:
+			print "\tROAMING mms: {0} ({1} EUR)".format (day['mmsRoaming']['count'], float(day['mmsRoaming']['chargeTotal']))
+		if 'dataRoaming' in day:
+			print "\tROAMING data: {0:.2f} MB ({1} EUR)".format(day['dataRoaming']['count']/1024.0/1024.0, float(day['dataRoaming']['chargeTotal']))
+
 
 def frequentNumbers():
 	month=billCycle # Parameter month is mandatory
