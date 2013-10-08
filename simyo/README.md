@@ -76,3 +76,11 @@ Download invoice:
 pau@maco:~/simyo$ ./simyo.py -d H2013071014073781
 File: factura_12345_1984119_2010713-00034044_010912.pdf
 </pre>
+
+<b>INSTALL:</b>
+
+On Ubuntu/Debian systems, you need to install the required dependencies first:
+<pre>
+$ sudo apt-get install python-pip python-argparse
+$ sudo pip install pyDes
+</pre>
