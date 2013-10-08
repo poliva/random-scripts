@@ -354,10 +354,15 @@ def rechargeHistory():
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
-	print "\nHistorial de regargas:\n"
-	data = convert(json.loads(result)['response']['rechargeHistory'])
-	pp = pprint.PrettyPrinter(indent=4)
-	pp.pprint(data)
+	print "\nHistorico de regargas:\n"
+
+	print 'date\t\t\t\tfee'
+	print '-------------------\t\t----'
+	data = json.loads(result)
+	for recharge in data['response']['rechargeHistory']:
+		date = epoch2date(recharge['date'], '%d/%m/%Y %H:%M:%S')
+		fee = recharge['fee']
+		print '{0}\t\t{1}'.format(date, fee)
 
 def mgmHistory():
 	URL="https://www.simyo.es/api/mgmHistory/" + str(customerId) + "?sessionId=" + str(sessionId)
