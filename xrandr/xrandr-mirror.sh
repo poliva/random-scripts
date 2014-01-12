@@ -3,15 +3,16 @@
 # useful for presentations, conferences, etc...
 # (c) 2013 Pau Oliva Fora - @pof
 
+# problems? rm ~/.config/monitors.xml
+
 #xrandr --output HDMI1 --auto --same-as eDP1
 #xrandr --output HDMI1 --auto --mode 1440x900 --same-as eDP1
 
 INPUT="eDP1"
-INPUT_RES=$(xrandr  |grep " connected" |grep ${INPUT} |cut -f 3 -d " " |cut -f 1 -d "+")
-
 OUTPUT=$(xrandr |grep " connected" |grep -v ${INPUT} |cut -f 1 -d " ")
+
 if [ -z $1 ]; then
-	OUTPUT_RES=1024x768 # default in case we can't find anything
+	INPUT_RES=$(xrandr |grep -A1 ${INPUT} |tail -n 1 |awk '{print $1}')
 	RES=$(xrandr |grep -A15 ${OUTPUT} |grep -B15 "connected" |awk '{print $1}' |grep "[0-9][0-9][0-9]x[0-9][0-9][0-9]")
 	echo "Available OUTPUT resolutions:"
 	echo "$RES"
@@ -29,21 +30,34 @@ if [ -z $1 ]; then
 			fi
 		fi
 	done
+	if [ -z ${OUTPUT_RES} ]; then
+		echo
+		echo "Warning: Can't find a matching output resolution"
+		echo "If you are not happy with the results try to specify the resolution manually"
+		echo "example: $0 <resolution>"
+		echo
+		OUTPUT_RES=$(xrandr |grep -A1 ${OUTPUT} |tail -n 1 |awk '{print $1}')
+	fi
 else
 	OUTPUT_RES=$1
+	INPUT_RES=$1
 fi
 
 echo
-echo "INPUT: ${INPUT} (${INPUT_RES})"
 
 if [ "$1" == "-u" ]; then
 	# undo (left-of: my home setup)
+	INPUT_RES=$(xrandr |grep -A1 ${INPUT} |tail -n 1 |awk '{print $1}')
+	echo "INPUT: ${INPUT} (${INPUT_RES})"
 	OUTPUT_RES=$(xrandr |grep -A1 ${OUTPUT} |tail -n 1 |awk '{print $1}')
 	echo "OUTPUT: ${OUTPUT} (${OUTPUT_RES})"
-	xrandr --output ${OUTPUT} --auto --mode ${OUTPUT_RES} --left-of ${INPUT}
+	xrandr --output ${INPUT} --auto --mode ${INPUT_RES} --output ${OUTPUT} --auto --mode ${OUTPUT_RES} --left-of ${INPUT}
 else
+	echo "INPUT: ${INPUT} (${INPUT_RES})"
 	echo "OUTPUT: ${OUTPUT} (${OUTPUT_RES})"
-	xrandr --output ${OUTPUT} --auto --mode ${OUTPUT_RES} --same-as ${INPUT}
+	#xrandr --output ${OUTPUT} --auto --mode ${OUTPUT_RES} --same-as ${INPUT}
+	#xrandr --output ${INPUT}  --auto --mode ${OUTPUT_RES} --same-as ${OUTPUT}
+	xrandr --output ${OUTPUT} --auto --mode ${OUTPUT_RES} --same-as ${INPUT} --output ${INPUT} --auto --mode ${OUTPUT_RES}
 fi
 
 echo "Done!"
