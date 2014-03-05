@@ -18,16 +18,24 @@ fi
 if [ "$1" == "r" ]; then
 	echo "[+] Restore wifi mac"
 	svc wifi disable
-	cp /data/misc/wifi/WCNSS_qcom_cfg.ini.bkp /data/misc/wifi/WCNSS_qcom_cfg.ini
-	cp /data/misc/wifi/WCNSS_qcom_wlan_nv.bin.bkp /data/misc/wifi/WCNSS_qcom_wlan_nv.bin
+	if [ -f /data/misc/wifi/WCNSS_qcom_cfg.ini.bkp ] && [ -f /data/misc/wifi/WCNSS_qcom_wlan_nv.bin.bkp ]; then
+		cp /data/misc/wifi/WCNSS_qcom_cfg.ini.bkp /data/misc/wifi/WCNSS_qcom_cfg.ini
+		cp /data/misc/wifi/WCNSS_qcom_wlan_nv.bin.bkp /data/misc/wifi/WCNSS_qcom_wlan_nv.bin
+	fi
 	svc wifi enable
 	echo "[+] done."
 	exit 0
 fi
 
-cp /data/misc/wifi/WCNSS_qcom_cfg.ini /data/misc/wifi/WCNSS_qcom_cfg.ini.bkp
-cp /data/misc/wifi/WCNSS_qcom_wlan_nv.bin /data/misc/wifi/WCNSS_qcom_wlan_nv.bin.bkp
 
+if [ -f /data/misc/wifi/WCNSS_qcom_cfg.ini ] && [ -f /data/misc/wifi/WCNSS_qcom_wlan_nv.bin ]; then
+	if [ ! -f /data/misc/wifi/WCNSS_qcom_cfg.ini.bkp ]; then
+		cp /data/misc/wifi/WCNSS_qcom_cfg.ini /data/misc/wifi/WCNSS_qcom_cfg.ini.bkp
+	fi
+	if [ ! -f /data/misc/wifi/WCNSS_qcom_wlan_nv.bin.bkp ]; then
+		cp /data/misc/wifi/WCNSS_qcom_wlan_nv.bin /data/misc/wifi/WCNSS_qcom_wlan_nv.bin.bkp
+	fi
+fi
 
 function changemac() {
 	newmac=$(echo $1 |sed -e "s/://g")
@@ -45,8 +53,14 @@ function changemac() {
 		exit 1
 	fi
 
-	sed -i "s/${mymac}/${newmac}/gI" /data/misc/wifi/WCNSS_qcom_cfg.ini
-	/data/data/org.radare.installer/radare2/bin/r2 -c "wx ${newmac}@0xa" -n -q -w /data/misc/wifi/WCNSS_qcom_wlan_nv.bin
+	if [ -f /data/misc/wifi/WCNSS_qcom_cfg.ini ] && [ -f /data/misc/wifi/WCNSS_qcom_wlan_nv.bin ]; then
+		sed -i "s/${mymac}/${newmac}/gI" /data/misc/wifi/WCNSS_qcom_cfg.ini
+		/data/data/org.radare.installer/radare2/bin/r2 -c "wx ${newmac}@0xa" -n -q -w /data/misc/wifi/WCNSS_qcom_wlan_nv.bin
+	else
+		ip link set ${IFACE} down
+		ip link set dev ${IFACE} address $1
+		ip link set ${IFACE} up
+	fi
 }
 
 ipmask=`ip addr show dev ${IFACE} |grep "inet " |awk '{print $2}'`
