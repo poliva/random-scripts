@@ -84,12 +84,17 @@ for o in $loop ; do
 
 		if [ "${mac}" == "${gwmac}" ]; then
 			# try to avoid gateways answering all arp requests (and fix busybox arping output)
-			mac=`arping -I ${IFACE} -c 1 -w 1 -b ${ip} |grep reply |awk '{print $5}' |uniq |tr [:upper:] [:lower:] |sed -e "s:\[::" -e "s:\]::" |sed -e "s/:0:/:00:/g" -e "s/:1:/:01:/g" -e "s/:2:/:02:/g" -e "s/:3:/:03:/g" -e "s/:4:/:04:/g" -e "s/:5:/:05:/g" -e "s/:6:/:06:/g" -e "s/:7:/:07:/g" -e "s/:8:/:08:/g" -e "s/:9:/:09:/g" -e "s/:a:/:0a:/g" -e "s/:b:/:0b:/g" -e "s/:c:/:0c:/g" -e "s/:d:/:0d:/g" -e "s/:e:/:0e:/g" -e "s/:f:/:0f:/g" -e "s/^0:/00:/g" -e "s/^1:/01:/g" -e "s/^2:/02:/g" -e "s/^3:/03:/g" -e "s/^4:/04:/g" -e "s/^5:/05:/g" -e "s/^6:/06:/g" -e "s/^7:/07:/g" -e "s/^8:/08:/g" -e "s/^9:/09:/g" -e "s/^a:/0a:/g" -e "s/^b:/0b:/g" -e "s/^c:/0c:/g" -e "s/^d:/0d:/g" -e "s/^e:/0e:/g" -e "s/^f:/0f:/g" -e "s/:0$/:00/g" -e "s/:1$/:01/g" -e "s/:2$/:02/g" -e "s/:3$/:03/g" -e "s/:4$/:04/g" -e "s/:5$/:05/g" -e "s/:6$/:06/g" -e "s/:7$/:07/g" -e "s/:8$/:08/g" -e "s/:9$/:09/g" -e "s/:a$/:0a/g" -e "s/:b$/:0b/g" -e "s/:c$/:0c/g" -e "s/:d$/:0d/g" -e "s/:e$/:0e/g" -e "s/:f$/:0f/g" |grep -v "$gwmac" |sed -e "s:\[::" -e "s:\]::" |head -n 1`
+			mac=`arping -I ${IFACE} -c 1 -w 1 -b ${ip} |grep reply |awk '{print $5}' |uniq |tr [:upper:] [:lower:] |sed -e "s/:0:/:00:/g" -e "s/:1:/:01:/g" -e "s/:2:/:02:/g" -e "s/:3:/:03:/g" -e "s/:4:/:04:/g" -e "s/:5:/:05:/g" -e "s/:6:/:06:/g" -e "s/:7:/:07:/g" -e "s/:8:/:08:/g" -e "s/:9:/:09:/g" -e "s/:a:/:0a:/g" -e "s/:b:/:0b:/g" -e "s/:c:/:0c:/g" -e "s/:d:/:0d:/g" -e "s/:e:/:0e:/g" -e "s/:f:/:0f:/g" -e "s/^0:/00:/g" -e "s/^1:/01:/g" -e "s/^2:/02:/g" -e "s/^3:/03:/g" -e "s/^4:/04:/g" -e "s/^5:/05:/g" -e "s/^6:/06:/g" -e "s/^7:/07:/g" -e "s/^8:/08:/g" -e "s/^9:/09:/g" -e "s/^a:/0a:/g" -e "s/^b:/0b:/g" -e "s/^c:/0c:/g" -e "s/^d:/0d:/g" -e "s/^e:/0e:/g" -e "s/^f:/0f:/g" -e "s/:0$/:00/g" -e "s/:1$/:01/g" -e "s/:2$/:02/g" -e "s/:3$/:03/g" -e "s/:4$/:04/g" -e "s/:5$/:05/g" -e "s/:6$/:06/g" -e "s/:7$/:07/g" -e "s/:8$/:08/g" -e "s/:9$/:09/g" -e "s/:a$/:0a/g" -e "s/:b$/:0b/g" -e "s/:c$/:0c/g" -e "s/:d$/:0d/g" -e "s/:e$/:0e/g" -e "s/:f$/:0f/g" |sed -e "s:\[::" -e "s:\]::" |grep -v "${gwmac}" |head -n 1`
 		fi
 
 		if [ -z "${mac}" ]; then
 			echo
 			continue
+		fi
+
+		len=`echo -n ${mac}|wc -c`
+		if [ ${len} -lt 17 ];then
+			mac=0${mac}
 		fi
 
 		echo "- ${mac}"
