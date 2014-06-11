@@ -1,15 +1,18 @@
 #!/system/bin/sh
 #
 # OTA "root keeper" for Android 4.3+
+#
+#  - if you have (old) SuperSU: chattr -i /system/etc/install-recovery.sh, otherwise OTA will fail
+#  - if you have SuperSU pro, don't use this script. Use SuperSU OTA Survival feature.
 # 
 # install instructions:
-#  0) if you have SuperSU: chattr -i /system/etc/install-recovery.sh, otherwise OTA will fail
 #  1) copy this script to /system/xbin/keeproot.sh and make it executable.
 #  2) rm /system/bin/log && ln -s /system/xbin/keeproot.sh /system/bin/log
 #   
 
 if [ "$2" == "recovery" ]; then
-	if [ ! -u /system/xbin/su ]; then
+	grep "daemon" /system/etc/install-recovery.sh >/dev/null 2>/dev/null
+	if [ $? -eq 1 ]; then
 
 		mount -o remount,rw /system
 
@@ -28,6 +31,11 @@ if [ "$2" == "recovery" ]; then
 		EOF
 
 		mount -o remount,ro /system
+
+		grep "daemon" /system/etc/install-recovery.sh >/dev/null 2>/dev/null
+		if [ $? -eq 0 ]; then
+			/system/etc/install-recovery.sh >/dev/null 2>/dev/null &
+		fi
 	fi
 fi
 toolbox log ${1+"$@"}
