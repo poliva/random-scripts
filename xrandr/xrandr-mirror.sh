@@ -9,11 +9,11 @@
 #xrandr --output HDMI1 --auto --mode 1440x900 --same-as eDP1
 
 INPUT="eDP1"
-OUTPUT=$(xrandr |grep " connected" |grep -v ${INPUT} |cut -f 1 -d " ")
+OUTPUT=$(xrandr |grep " connected" |grep -v "^${INPUT}" |cut -f 1 -d " ")
 
 if [ -z $1 ]; then
-	INPUT_RES=$(xrandr |grep -A1 ${INPUT} |tail -n 1 |awk '{print $1}')
-	RES=$(xrandr |grep -A15 ${OUTPUT} |grep -B15 "connected" |awk '{print $1}' |grep "[0-9][0-9][0-9]x[0-9][0-9][0-9]")
+	INPUT_RES=$(xrandr |grep -A1 "^${INPUT}" |tail -n 1 |awk '{print $1}')
+	RES=$(xrandr |grep -A15 "^${OUTPUT}" |grep -B15 "connected" |awk '{print $1}' |grep "[0-9][0-9][0-9]x[0-9][0-9][0-9]")
 	echo "Available OUTPUT resolutions:"
 	echo "$RES"
 	# choose the biggest supported resolution that is smaller than INPUT_RES
@@ -36,7 +36,7 @@ if [ -z $1 ]; then
 		echo "If you are not happy with the results try to specify the resolution manually"
 		echo "example: $0 <resolution>"
 		echo
-		OUTPUT_RES=$(xrandr |grep -A1 ${OUTPUT} |tail -n 1 |awk '{print $1}')
+		OUTPUT_RES=$(xrandr |grep -A1 "^${OUTPUT}" |tail -n 1 |awk '{print $1}')
 	fi
 else
 	OUTPUT_RES=$1
@@ -47,9 +47,9 @@ echo
 
 if [ "$1" == "-u" ]; then
 	# undo (left-of: my home setup)
-	INPUT_RES=$(xrandr |grep -A1 ${INPUT} |tail -n 1 |awk '{print $1}')
+	INPUT_RES=$(xrandr |grep -A1 "^${INPUT}" |tail -n 1 |awk '{print $1}')
 	echo "INPUT: ${INPUT} (${INPUT_RES})"
-	OUTPUT_RES=$(xrandr |grep -A1 ${OUTPUT} |tail -n 1 |awk '{print $1}')
+	OUTPUT_RES=$(xrandr |grep -A1 "^${OUTPUT}" |tail -n 1 |awk '{print $1}')
 	echo "OUTPUT: ${OUTPUT} (${OUTPUT_RES})"
 	xrandr --output ${INPUT} --auto --mode ${INPUT_RES} --output ${OUTPUT} --auto --mode ${OUTPUT_RES} --left-of ${INPUT}
 else
