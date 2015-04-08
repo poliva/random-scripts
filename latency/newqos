@@ -1,0 +1,356 @@
+#! /bin/bash
+
+# Public interface
+EXT_IF="eth1"
+DOWNLINK="10800" # I have 12Mbps downlink
+UPLINK="900"    # I have 1Mbps uplink
+VOIP="yes"       # set to "yes" or "no"
+
+# high priority ports
+PRIOPORT="22 23 53 80 443"
+
+# low priority ports
+LIMITEDPORT="25 993 873"
+
+# list of hosts that always get high priority
+#PRIOHOST=`cat /etc/resolv.conf  |grep "^nameserver" |cut -f 2 -d " "`
+PRIOHOST=`cat /etc/network/interfaces |grep "dns-nameservers" |cut -f 2- -d " "`
+PRIOHOST="$PRIOHOST 8.8.8.8 8.8.8.4"
+
+# list of host that always get low priority
+LIMITEDHOST="192.168.1.6"
+
+###########################################################
+#### you don't need to modify anything below this line ####
+#### unless you know what you are doing                ####
+###########################################################
+
+DOWN_KBPS=$(( DOWNLINK ))
+UP_KBPS=$(( UPLINK ))
+
+### here we're going to define how much bandwidth can get each class
+### CLASS_RS == RESERVED Bandwidth (Can't be used by other classes)
+### CLASS_RT == Real Time Bandwidth (Guaranteed for this class)
+### CLASS_LS == Link Sharing Bandwidth (fairness)
+### CLASS_UL == Upper Limit Bandwidth (The class can't take more bandwidth than this)
+### RULE: RT <= LS <= UL
+
+########### CLASS VOIP
+if [ "${VOIP}" == "yes" ]; then
+	VOIP_RESERVED="128"
+	VOIP_LS=$((50 * UP_KBPS / 100 ))
+	VOIP_UL=$UP_KBPS
+	VOIP_RT="160"
+	AVAILABLE_UP_KBPS=$(( UP_KBPS - VOIP_RESERVED ))
+else
+	AVAILABLE_UP_KBPS=$UP_KBPS
+fi
+
+########### CLASS HIGHPRIO
+if [ "${VOIP}" == "yes" ]; then
+	HIGHPRIO_RT="64"
+else
+	HIGHPRIO_RT="128"
+fi
+HIGHPRIO_LS=$((55 * AVAILABLE_UP_KBPS / 100))
+HIGHPRIO_UL=$AVAILABLE_UP_KBPS
+
+########### CLASS BULK
+BULK_LS=$((30 * AVAILABLE_UP_KBPS / 100))
+BULK_UL=$((AVAILABLE_UP_KBPS - HIGHPRIO_RT))
+
+########### CLASS LOWPRIO
+LOWPRIO_LS=$((5 * AVAILABLE_UP_KBPS / 100))
+LOWPRIO_UL=$((70 * AVAILABLE_UP_KBPS / 100))
+
+### currently unused
+HIGHPRIO_RESERVED=0
+BULK_RESERVED=0
+LOWPRIO_RESERVED=0
+BULK_RT=0
+LOWPRIO_RT=0
+
+echo "UPLINK: ${UP_KBPS}kbps available"
+if [ "${VOIP}" == "yes" ]; then
+	echo "GGPO:     Reserved ${VOIP_RESERVED}kbit <= Guaranteed: ${VOIP_RT}kbit <= Shared: ${VOIP_LS}kbit <= Limit: ${VOIP_UL}kbit"
+fi
+echo "HIGHPRIO: Reserved ${HIGHPRIO_RESERVED}kbit <= Guaranteed: ${HIGHPRIO_RT}kbit <= Shared: ${HIGHPRIO_LS}kbit <= Limit: ${HIGHPRIO_UL}kbit"
+echo "BULK:     Reserved ${BULK_RESERVED}kbit <= Guaranteed: ${BULK_RT}kbit <= Shared: ${BULK_LS}kbit <= Limit: ${BULK_UL}kbit"
+echo "LOWPRIO:  Reserved ${LOWPRIO_RESERVED}kbit <= Guaranteed: ${LOWPRIO_RT}kbit <= Shared: ${LOWPRIO_LS}kbit <= Limit: ${LOWPRIO_UL}kbit"
+echo "DOWNLINK: ${DOWN_KBPS}kbit available"
+
+if [ "$1" = "status" ]
+then
+
+	echo "---- qdisc parameters ----"
+	tc -s -d qdisc ls dev ${EXT_IF}
+	echo "---- Class parameters ----"
+	tc -s -d class ls dev ${EXT_IF}
+	echo "---- filter parameters ----"
+	tc -s -d filter ls dev ${EXT_IF}
+
+	echo "==== EXTERNAL DEVICE ===="
+	tc -s qdisc ls dev ${EXT_IF}
+	tc -s class ls dev ${EXT_IF}
+
+	echo "===== IPTABLES ======"
+        iptables -t mangle -L SET_TOS -v -x -n 2> /dev/null
+	exit
+fi
+
+# clean existing down and uplink qdiscs, hide errors
+tc qdisc del dev ${EXT_IF} root    2> /dev/null > /dev/null
+tc qdisc del dev ${EXT_IF} ingress 2> /dev/null > /dev/null
+
+# flush tables
+iptables -t mangle -D INPUT -j SET_TOS 2>/dev/null
+iptables -t mangle -D FORWARD -j SET_TOS 2>/dev/null
+iptables -t mangle -D OUTPUT -j SET_TOS 2>/dev/null
+iptables -t mangle -F SET_TOS 2>/dev/null
+iptables -t mangle -X SET_TOS 2>/dev/null
+
+if [ "$1" = "stop" ] 
+then 
+	exit
+fi
+
+# hfsc [ [ rt SC ] [ ls SC ] | [ sc SC ] ] [ ul SC ]
+# 
+#	 SC := [ [ umax BYTE ] dmax SEC ] rate BPS
+#	 umax : maximum unit of work
+#	 dmax : maximum delay
+#	 rate : rate
+#
+#	 rt   Realtime     (guarrenteed)
+#	 ls   Link sharing (fairness)
+#	 sc   Single Curve (instead of specifying RT == LS)
+#	 ul   Upper limit  (shaping)
+#
+#  rt <= ls <= ul
+
+## NOTES
+# 1:10 --> super high speed (voip) --> 0x68 / 0xb8  [Mark: 1]  DSCP for IAX/SIP/RTP
+# 1:20 --> high speed              --> 0x10         [Mark: 2]  TOS: Minimize-Delay
+# 1:30 --> bulk traffic            --> unset        [No Mark]  TOS: Normal-Service
+# 1:40 --> limited                 --> 0x02         [Mark: 4]  TOS: Minimize-Cost
+
+###### uplink
+tc qdisc add dev ${EXT_IF} root handle 1: hfsc default 30 
+tc class add dev ${EXT_IF} parent 1: classid 1:1 hfsc ls rate ${UP_KBPS}kbit ul rate ${UP_KBPS}kbit
+
+PARENT="1:1"
+
+if [ "${VOIP}" == "yes" ]; then
+	# Voip class ( Minimum delay 128kbit guarranted)
+	tc class add dev ${EXT_IF} parent ${PARENT} classid 1:10 hfsc rt umax 1500b dmax 20ms rate ${VOIP_RT}kbit ls rate ${VOIP_LS}kbit ul rate ${VOIP_UL}kbit
+	# Limit the rest of the classes, to preserve 64 Kbit for VOIP
+	tc class add dev ${EXT_IF} parent ${PARENT} classid 1:2 hfsc ls rate ${VOIP_LS}kbit ul rate ${AVAILABLE_UP_KBPS}kbit
+	PARENT="1:2"
+fi
+
+# Standard low latency - 64kbit guarranteed.
+tc class add dev ${EXT_IF} parent ${PARENT} classid 1:20 hfsc rt umax 1500b dmax 50ms rate ${HIGHPRIO_RT}kbit ls rate ${HIGHPRIO_LS}kbit ul rate ${HIGHPRIO_UL}kbit
+# bulk & default class 1:30
+tc class add dev ${EXT_IF} parent ${PARENT} classid 1:30 hfsc ls rate ${BULK_LS}kbit ul rate ${BULK_UL}kbit
+
+# limited class 1:40
+tc class add dev ${EXT_IF} parent ${PARENT} classid 1:40 hfsc ls rate ${LOWPRIO_LS}kbit ul rate ${LOWPRIO_UL}kbit
+
+if [ "${VOIP}" == "yes" ]; then
+	# Add packet limited queue for VOIP traffic. 
+	tc qdisc add dev ${EXT_IF} parent 1:10 handle 10: pfifo limit 10
+fi
+
+# Add fairness to all leaves
+tc qdisc add dev ${EXT_IF} parent 1:20 handle 20: sfq perturb 10
+tc qdisc add dev ${EXT_IF} parent 1:30 handle 30: sfq perturb 10
+tc qdisc add dev ${EXT_IF} parent 1:40 handle 40: sfq perturb 10
+
+#tc qdisc add dev ${EXT_IF} parent 1:20 handle 20: pfifo limit 10
+#tc qdisc add dev ${EXT_IF} parent 1:30 handle 30: pfifo limit 10
+#tc qdisc add dev ${EXT_IF} parent 1:40 handle 40: pfifo limit 10
+#tc qdisc add dev ${EXT_IF} parent 1:30 handle 30: sfq perturb 10
+#tc qdisc add dev ${EXT_IF} parent 1:40 handle 40: sfq perturb 10
+
+
+
+# Filter traffic into different classes.
+
+if [ "${VOIP}" == "yes" ]; then
+	# VoIP traffic always get first in line.
+	tc filter add dev ${EXT_IF} parent 1: prio 3 protocol ip u32 match ip tos 0x68 0xff flowid 1:10
+	tc filter add dev ${EXT_IF} parent 1: prio 4 protocol ip u32 match ip tos 0xb8 0xff flowid 1:10
+fi
+
+#  Now we set the filters so we can classify the packets with iptables
+tc filter add dev ${EXT_IF} parent 1: protocol ip prio 10 handle 1 fw classid 1:10
+tc filter add dev ${EXT_IF} parent 1: protocol ip prio 20 handle 2 fw classid 1:20
+tc filter add dev ${EXT_IF} parent 1: protocol ip prio 30 handle 3 fw classid 1:30
+tc filter add dev ${EXT_IF} parent 1: protocol ip prio 40 handle 4 fw classid 1:40
+
+
+# TOS Minimum Delay
+#tc filter add dev ${EXT_IF} parent 1: protocol ip prio 10 u32 match ip tos 0x10 0xff flowid 1:20
+# To speed up downloads while an upload is going on, put ACK packets in the interactive class:
+#tc filter add dev ${EXT_IF} parent 1: protocol ip prio 10 u32 match ip protocol 6 0xff match u8 0x10 0xff at nexthdr+13 match u16 0x0000 0xffc0 at 2 flowid 1:20
+
+# Place bulk traffic in low prio
+#tc filter add dev ${EXT_IF} parent 1: protocol ip prio 40 u32 match ip tos 0x02 0xff flowid 1:40
+
+# default 
+#tc filter add dev ${EXT_IF} parent 1: protocol ip prio 30 u32 match ip dst 0.0.0.0/0 flowid 1:30
+
+########## downlink #############
+# slow downloads down to somewhat less than the real speed  to prevent
+# queuing at our ISP. Tune to see how high you can set it.
+# ISPs tend to have *huge* queues to make sure big downloads are fast
+#
+# attach ingress policer:
+
+tc qdisc add dev ${EXT_IF} handle ffff: ingress
+
+# Add filters. the police continue, just passes the on the packet,
+# And only the last filter actually drops packets. 
+
+# As we cannot do overall traffic shaping on incoming packets, this can make it worse for 
+if [ "${VOIP}" == "yes" ]; then
+	# Allow all voip traffic (Never drop it, as there is no retransmit.)
+	tc filter add dev ${EXT_IF} parent ffff: protocol ip prio 10 u32 match ip tos 0x68 0xff police rate $((VOIP_RESERVED * 2))kbit buffer 10k continue flowid :1
+	tc filter add dev ${EXT_IF} parent ffff: protocol ip prio 10 u32 match ip tos 0xb8 0xff police rate $((VOIP_RESERVED * 2))kbit buffer 10k continue flowid :1
+fi
+
+# Dont drop icmp packets, but only allow a very small rate to pass through.
+tc filter add dev ${EXT_IF} parent ffff: protocol ip prio 20 u32 match ip protocol 1 0xff police rate 2kbit buffer 1k continue flowid :1
+
+# Allow all ACKs, to avoid retransmits take up that much traffic
+tc filter add dev ${EXT_IF} parent ffff: protocol ip prio 30 u32 match ip protocol 6 0xff match u8 0x05 0x0f at 0 match u16 0x0000 0xffc0 at 2 police rate 2kbit buffer 1k continue flowid :1
+
+# filter *everything* to it (0.0.0.0/0), drop everything that's coming in too fast:
+tc filter add dev ${EXT_IF} parent ffff: protocol ip prio 40 u32 match ip src 0.0.0.0/0 police rate $((DOWN_KBPS))kbit mtu 1500 burst 10k drop flowid :1
+
+## NOTES
+# 1:10 --> super high speed (voip) --> 0x68 / 0xb8  [Mark: 1]  DSCP for IAX/SIP/RTP
+# 1:20 --> high speed              --> 0x10         [Mark: 2]  TOS: Minimize-Delay
+# 1:30 --> bulk traffic            --> unset        [No Mark]  TOS: Normal-Service
+# 1:40 --> limited                 --> 0x02         [Mark: 4]  TOS: Minimize-Cost
+
+### Tos Priorities (highest to lowest)
+# 0x10  Minimize-Delay        Interactive + Low Delay, highest prio
+# 0x08  Maximize-Throughput   Interactive + Bulk
+# 0x00  Normal-Service        Normal priority
+# 0x04  Maximize-Reliability  Best Effort
+# 0x02  Minimize-Cost         Minimum Cost
+
+
+iptables -t mangle -N SET_TOS
+
+if [ $VOIP == "yes" ]; then
+#	# IAX (dscp 0x68)
+#	echo "IAX"
+#	iptables -t mangle -A SET_TOS -p udp -m udp --dport 4569 -j MARK --set-mark 1
+#        #iptables -t mangle -A SET_TOS -p udp -m udp --dport 4569 -j DSCP --set-dscp 0x68
+#	iptables -t mangle -A SET_TOS -p udp -m udp --dport 4569 -j DSCP --set-dscp-class ef 
+#	iptables -t mangle -A SET_TOS -p udp -m udp --sport 4569 -j MARK --set-mark 1
+#        #iptables -t mangle -A SET_TOS -p udp -m udp --sport 4569 -j DSCP --set-dscp 0x68
+#	iptables -t mangle -A SET_TOS -p udp -m udp --sport 4569 -j DSCP --set-dscp-class ef 
+#	# SIP (dscp 0x68)
+#	echo "SIP"
+#	iptables -t mangle -A SET_TOS -p udp -m udp --dport 5060 -j MARK --set-mark 1
+#        #iptables -t mangle -A SET_TOS -p udp -m udp --dport 5060 -j DSCP --set-dscp 0x68
+#	iptables -t mangle -A SET_TOS -p udp -m udp --dport 5060 -j DSCP --set-dscp-class ef 
+#	iptables -t mangle -A SET_TOS -p udp -m udp --sport 5060 -j MARK --set-mark 1
+#        #iptables -t mangle -A SET_TOS -p udp -m udp --sport 5060 -j DSCP --set-dscp 0x68
+#	iptables -t mangle -A SET_TOS -p udp -m udp --sport 5060 -j DSCP --set-dscp-class ef 
+#	# RTP (DSCP 0xb8)
+#	echo "RTP"
+#	iptables -t mangle -A SET_TOS -p udp -m udp --dport 10000:20000 -j MARK --set-mark 1
+#        #iptables -t mangle -A SET_TOS -p udp -m udp --dport 10000:20000 -j DSCP --set-dscp 0xb8
+#	iptables -t mangle -A SET_TOS -p udp -m udp --dport 10000:20000 -j DSCP --set-dscp-class ef 
+#	iptables -t mangle -A SET_TOS -p udp -m udp --sport 10000:20000 -j MARK --set-mark 1
+#        #iptables -t mangle -A SET_TOS -p udp -m udp --sport 10000:20000 -j DSCP --set-dscp 0xb8
+#	iptables -t mangle -A SET_TOS -p udp -m udp --sport 10000:20000 -j DSCP --set-dscp-class ef 
+#        echo "IAX/SIP/RTP traffic DSCP mangling is enabled"
+	# GGPO
+	echo "GGPO/udp"
+	iptables -t mangle -A SET_TOS -p udp -m udp --dport 6000:6009 -j MARK --set-mark 1
+	iptables -t mangle -A SET_TOS -p udp -m udp --dport 6000:6009 -j DSCP --set-dscp-class ef 
+	iptables -t mangle -A SET_TOS -p udp -m udp --sport 6000:6009 -j MARK --set-mark 1
+	iptables -t mangle -A SET_TOS -p udp -m udp --sport 6000:6009 -j DSCP --set-dscp-class ef 
+        echo "GGPO traffic DSCP mangling is enabled"
+fi
+
+# high priority ports
+echo -n "Traffic on ports "
+for a in $PRIOPORT ; do
+	echo -n "$a "
+	iptables -t mangle -A SET_TOS -p tcp --dport $a -j TOS --set-tos Minimize-Delay
+	iptables -t mangle -A SET_TOS -p tcp --sport $a -j TOS --set-tos Minimize-Delay
+	iptables -t mangle -A SET_TOS -p udp --dport $a -j TOS --set-tos Minimize-Delay
+	iptables -t mangle -A SET_TOS -p udp --sport $a -j TOS --set-tos Minimize-Delay
+	iptables -t mangle -A SET_TOS -p tcp --dport $a -j MARK --set-mark 2
+	iptables -t mangle -A SET_TOS -p tcp --sport $a -j MARK --set-mark 2
+	iptables -t mangle -A SET_TOS -p udp --dport $a -j MARK --set-mark 2
+	iptables -t mangle -A SET_TOS -p udp --sport $a -j MARK --set-mark 2
+done
+echo "will get high priority"
+
+# low priority ports
+echo -n "Traffic on ports "
+for a in $LIMITEDPORT ; do
+	echo -n "$a "
+	iptables -t mangle -A SET_TOS -p tcp --dport $a -j TOS --set-tos Minimize-Cost
+	iptables -t mangle -A SET_TOS -p tcp --sport $a -j TOS --set-tos Minimize-Cost
+	iptables -t mangle -A SET_TOS -p udp --dport $a -j TOS --set-tos Minimize-Cost
+	iptables -t mangle -A SET_TOS -p udp --sport $a -j TOS --set-tos Minimize-Cost
+	iptables -t mangle -A SET_TOS -p tcp --dport $a -j MARK --set-mark 4
+	iptables -t mangle -A SET_TOS -p tcp --sport $a -j MARK --set-mark 4
+	iptables -t mangle -A SET_TOS -p udp --dport $a -j MARK --set-mark 4
+	iptables -t mangle -A SET_TOS -p udp --sport $a -j MARK --set-mark 4
+done
+echo "will get low priority"
+
+# high priority hosts
+for a in $PRIOHOST ; do
+	iptables -t mangle -A SET_TOS -s $a -j TOS --set-tos Minimize-Delay
+	iptables -t mangle -A SET_TOS -d $a -j TOS --set-tos Minimize-Delay
+	iptables -t mangle -A SET_TOS -s $a -j MARK --set-mark 2
+	iptables -t mangle -A SET_TOS -d $a -j MARK --set-mark 2
+        echo "Traffic from/to host $a will get highest priority"
+done
+
+# limited hosts
+for a in $LIMITEDHOST ; do
+	iptables -t mangle -A SET_TOS -s $a -j TOS --set-tos Minimize-Cost
+	iptables -t mangle -A SET_TOS -d $a -j TOS --set-tos Minimize-Cost
+	iptables -t mangle -A SET_TOS -s $a -j MARK --set-mark 4
+	iptables -t mangle -A SET_TOS -d $a -j MARK --set-mark 4
+	echo "Traffic from/to host $a will get lowest priority"
+done
+
+
+# now we decide where we put the common traffic
+echo "TOS Minimize-Delay (0x10), ICMP and ACK,SYN,RST packets will get high priority"
+echo "TOS Minimize-Cost (0x02) will get low priority"
+
+# TOS Minimize-Delay (0x10) in 1:10
+iptables -t mangle -A SET_TOS -m tos --tos Minimize-Delay -j MARK --set-mark 2
+# TOS Minimize-Cost (0x02) in 1:40
+iptables -t mangle -A SET_TOS -m tos --tos Minimize-Cost -j MARK --set-mark 4
+
+# ICMP in the interactive class 1:10 so we can do measurements & impress our friends
+iptables -t mangle -A SET_TOS -p icmp -j MARK --set-mark 2
+
+# To speed up downloads while an upload is going on, put ACK packets in the interactive class
+iptables -t mangle -A SET_TOS -p tcp -m tcp --tcp-flags SYN,RST,ACK SYN -j MARK --set-mark 2
+# all tcp packets except SYN have ACK bit set, so to really mark ACKs we look at the packet size:
+iptables -t mangle -A SET_TOS -p tcp -m length --length 40:64 -j MARK --set-mark 2
+
+# igmp
+#iptables -t mangle -A SET_TOS -p igmp -j TOS --set-tos Maximize-Reliability
+# ftp helper
+#iptables -t mangle -A SET_TOS -m helper --helper ftp -j TOS --set-tos Maximize-Throughput
+
+# we use -I here to "Insert" before anything is done to input/output/forward packets
+iptables -t mangle -I INPUT -j SET_TOS
+iptables -t mangle -I FORWARD -j SET_TOS
+iptables -t mangle -I OUTPUT -j SET_TOS
