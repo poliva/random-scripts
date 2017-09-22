@@ -15,4 +15,5 @@ fi
 DST=`echo "$1" |sed -e "s/.ab$//g"`
 
 echo "Converting: $1 -> ${DST}.tar"
-dd if="$1" bs=1 skip=24|openssl zlib -d > "${DST}.tar"
+#dd if="$1" bs=1 skip=24|openssl zlib -d > "${DST}.tar"
+dd if="$1" bs=1 skip=24 | python -c "import zlib,sys;sys.stdout.write(zlib.decompress(sys.stdin.read()))" > "${DST}.tar"
