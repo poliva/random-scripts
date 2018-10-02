@@ -2,7 +2,7 @@
 # A very simple Bash script to download a YouTube video 
 # and extract the music file from it. 
 address=$1 
-regex='v=(.*)' 
+regex='v=([A-Za-z0-9_-]{11})' 
 if [[ $address =~ $regex ]]; then 
 	video_id=${BASH_REMATCH[1]}
 	video_id=$(echo $video_id | cut -d'&' -f1) 
