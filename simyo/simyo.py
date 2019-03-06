@@ -29,6 +29,8 @@ __author__ = 'Pau Oliva Fora'
 USERNAME = ""
 PASSWORD = ""
 
+BASE_URL = "https://api.simyo.es/simyo-api"
+
 def getApiSig(url):
 	dig = hmac.new(b'f25a2s1m10', msg='f25a2s1m10' + url.lower(), digestmod=hashlib.sha256).digest()
 	return url + "&apiSig=" + dig.encode('hex')
@@ -102,7 +104,7 @@ def api_request(url, data="", check=True):
 	return result
 
 def api_logout():
-	URL="https://api.simyo.es/api/logout?sessionId=" + str(sessionId)
+	URL=BASE_URL+"/logout?sessionId=" + str(sessionId)
 	result = api_request(URL,"",False)
 	if VERBOSE: print result + "\n"
 
@@ -110,7 +112,7 @@ def api_login():
 	global sessionId, customerId
 
 	SIMYOPASS = simyopass()
-	URL="https://api.simyo.es/api/login?"
+	URL=BASE_URL+"/login?"
 	data = "user=" + USERNAME + "&password=" + SIMYOPASS + "&apiSig=null"
 	result = api_request(URL,data)
 	if VERBOSE: print result + "\n"
@@ -121,7 +123,7 @@ def api_login():
 def subscriptions():
 	global registerDate, mainProductId, billCycleType, msisdn, subscriberId, payType
 
-	URL="https://api.simyo.es/api/subscriptions/" + str(customerId) + "?sessionId=" + str(sessionId)
+	URL=BASE_URL+"/subscriptions/" + str(customerId) + "?sessionId=" + str(sessionId)
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
@@ -144,7 +146,7 @@ def subscriptions():
 		sys.exit(0)
 
 def consumptionByCycle(billCycleCount=1):
-	URL="https://api.simyo.es/api/consumptionByCycle/" + str(customerId) + "?sessionId=" + str(sessionId) + "&msisdn=" + str(msisdn) + "&billCycleType=" + str(billCycleType) + "&registerDate=" + str(registerDate) + "&billCycle=" + str(billCycle) + "&billCycleCount=" + str(billCycleCount) + "&payType=" + str(payType)
+	URL=BASE_URL+"/consumptionByCycle/" + str(customerId) + "?sessionId=" + str(sessionId) + "&msisdn=" + str(msisdn) + "&billCycleType=" + str(billCycleType) + "&registerDate=" + str(registerDate) + "&billCycle=" + str(billCycle) + "&billCycleCount=" + str(billCycleCount) + "&payType=" + str(payType)
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
@@ -229,7 +231,7 @@ def consumptionByCycle(billCycleCount=1):
 	print "\nConsumo total: " + str(chargeTotal) + " EUR\n"
 
 def consumptionDetailByCycle(billCycleCount=1):
-	URL="https://api.simyo.es/api/consumptionDetailByCycle/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&billCycle=" + str(billCycle) + "&registerDate=" + str(registerDate) + "&billCycleCount=" + str(billCycleCount) + "&payType=" + str(payType)
+	URL=BASE_URL+"/consumptionDetailByCycle/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&billCycle=" + str(billCycle) + "&registerDate=" + str(registerDate) + "&billCycleCount=" + str(billCycleCount) + "&payType=" + str(payType)
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
@@ -286,7 +288,7 @@ def consumptionDetailByCycle(billCycleCount=1):
 
 def frequentNumbers():
 	month=billCycle # Parameter month is mandatory
-	URL="https://api.simyo.es/api/frequentNumbers/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&registerDate=" + str(registerDate) + "&month=" + str(month)
+	URL=BASE_URL+"/frequentNumbers/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&registerDate=" + str(registerDate) + "&month=" + str(month)
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
@@ -299,7 +301,7 @@ def frequentNumbers():
 def messages():
 	start=1
 	count=500
-	URL="https://api.simyo.es/api/messages/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&billCycle=" + str(billCycle) + "&registerDate=" + str(registerDate) + "&start=" + str(start) + "&count=" + str(count)
+	URL=BASE_URL+"/messages/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&billCycle=" + str(billCycle) + "&registerDate=" + str(registerDate) + "&start=" + str(start) + "&count=" + str(count)
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
@@ -321,7 +323,7 @@ def messages():
 def voiceCalls():
 	start=1
 	count=500
-	URL="https://api.simyo.es/api/voiceCalls/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&billCycle=" + str(billCycle) + "&registerDate=" + str(registerDate) + "&start=" + str(start) + "&count=" + str(count)
+	URL=BASE_URL+"/voiceCalls/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&billCycle=" + str(billCycle) + "&registerDate=" + str(registerDate) + "&start=" + str(start) + "&count=" + str(count)
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
@@ -350,7 +352,7 @@ def rechargeHistory():
 	startDate=registerDate
 	endDate = time()
 	endDate = int(endDate) * 1000
-	URL="https://api.simyo.es/api/rechargeHistory/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&registerDate=" + str(registerDate) + "&startDate=" + str(startDate) + "&endDate=" + str(endDate)
+	URL=BASE_URL+"/rechargeHistory/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&registerDate=" + str(registerDate) + "&startDate=" + str(startDate) + "&endDate=" + str(endDate)
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
@@ -365,7 +367,7 @@ def rechargeHistory():
 		print '{0}\t\t{1}'.format(date, fee)
 
 def mgmHistory():
-	URL="https://api.simyo.es/api/mgmHistory/" + str(customerId) + "?sessionId=" + str(sessionId)
+	URL=BASE_URL+"/mgmHistory/" + str(customerId) + "?sessionId=" + str(sessionId)
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
@@ -379,7 +381,7 @@ def mgmHistory():
 	print "TOTAL DISPONIBLE: " + str(totalAvailablePoints)
 
 def invoiceList():
-	URL="https://api.simyo.es/api/invoiceList/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&registerDate=" + str(registerDate)
+	URL=BASE_URL+"/invoiceList/" + str(customerId) + "?msisdn=" + str(msisdn) + "&sessionId=" + str(sessionId) + "&billCycleType=" + str(billCycleType) + "&registerDate=" + str(registerDate)
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
@@ -408,7 +410,7 @@ def downloadInvoice():
 		print "Can't find invoice with id = " + str(reqInvoiceId)
 		sys.exit(1)
 
-	URL="https://api.simyo.es/api/downloadInvoice?sessionId=" + str (sessionId) + "&invoiceNO=" + str(invoiceNO) + "&invoiceId=" + str(invoiceId)
+	URL=BASE_URL+"/downloadInvoice?sessionId=" + str (sessionId) + "&invoiceNO=" + str(invoiceNO) + "&invoiceId=" + str(invoiceId)
 	result = api_request(URL)
 	if VERBOSE: print result + "\n"
 
