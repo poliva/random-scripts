@@ -2,18 +2,18 @@
 (reverse engineered from the <a href="https://play.google.com/store/apps/details?id=com.simyo">com.simyo</a> mobile app)
 
 - The password used by the API is your Simyo password encripted using
-TripleDES with this key: `25d1d4cb0a08403e2acbcbe0f25a2` 
+TripleDES with this key: `TFq2VBDo3BizNAcPEw1vB7i5` 
 
 - All requests to the API have a signature which is sent in the parameter
 "`apiSig=xxxx`", this signature is calculated like this:
   1. convert to lowercase the complete request URL except the apiSig
 parameter 
-  2. concatenate the string "`f25a2s1m10`" + the lowercased URL
+  2. concatenate the string "`BHqCzYg8BAmZ`" + the lowercased URL
   3. the signature is obtained by computing the HMAC-SHA256 hash of the
-string obtained in the previous step, using the key "`f25a2s1m10`".
+string obtained in the previous step, using the key "`BHqCzYg8BAmZ`".
 
 - All api requests need the parameter "`publicKey=xxxx`", the value of
-this public key is: `a654fb77dc654a17f65f979ba8794c34`
+this public key is: `1SCOPDqVeSPjTKy`
 
 The rest is a piece of cake, make the request and parse the received
 json response.
