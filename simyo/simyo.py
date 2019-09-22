@@ -32,11 +32,11 @@ PASSWORD = ""
 BASE_URL = "https://api.simyo.es/simyo-api"
 
 def getApiSig(url):
-	dig = hmac.new(b'f25a2s1m10', msg='f25a2s1m10' + url.lower(), digestmod=hashlib.sha256).digest()
+	dig = hmac.new(b'BHqCzYg8BAmZ', msg='BHqCzYg8BAmZ' + url.lower(), digestmod=hashlib.sha256).digest()
 	return url + "&apiSig=" + dig.encode('hex')
 
 def simyopass():
-	k = pyDes.triple_des("25d1d4cb0a08403e2acbcbe0", pyDes.ECB, "\0\0\0\0\0\0\0\0", pad=None, padmode=pyDes.PAD_PKCS5)
+	k = pyDes.triple_des("TFq2VBDo3BizNAcPEw1vB7i5", pyDes.ECB, "\0\0\0\0\0\0\0\0", pad=None, padmode=pyDes.PAD_PKCS5)
 	d = urllib.quote(base64.b64encode(k.encrypt(PASSWORD)) + '\n')
 	#print "Encrypted: %r" % d
 	#print "Decrypted: %r" % k.decrypt(base64.b64decode(urllib.unquote(d)))
@@ -63,7 +63,7 @@ def epoch2date(timestamp, format='%d/%m/%Y'):
 	return datetime.datetime.fromtimestamp(int(timestamp)).strftime(format)
 
 def api_request(url, data="", check=True):
-	kPublicKey="a654fb77dc654a17f65f979ba8794c34"
+	kPublicKey="1SCOPDqVeSPjTKy"
 
 	if url[-1:] == "?":
 		url=url + "publicKey=" + kPublicKey
